@@ -1,10 +1,6 @@
 name: Build Android APK
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -12,62 +8,78 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout del código
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v5
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Setup Node.js
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Install dependencies
-        run: npm ci || npm install
+      - name: Configurar Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
 
-      - name: Save Manifest
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Preparar carpeta web (Build)
+        run: npm run build
+
+      - name: Añadir plataforma Android
+        run: npx cap add android
+
+      - name: Configurar Icono de la App
         run: |
-          mkdir -p /tmp/manifest_backup
-          cp android/app/src/main/AndroidManifest.xml /tmp/manifest_backup/ 2>/dev/null || true
+          npm install -g @capacitor/assets
+          npx cap-assets generate --iconAvailable --icon icon.png || true
 
-      - name: Prepare Web Assets
+      - name: Copiar MainActivity Java Personalizada
         run: |
-          mkdir -p www
-          cp -r index.html app.js styles.css icon.png manifest.json www/ 2>/dev/null || true
-          if [ -d "music" ]; then cp -r music www/; fi
+          PACKAGE_PATH="android/app/src/main/java/com/mitotalplayer/app"
+          mkdir -p $PACKAGE_PATH
+          cat << 'EOF' > $PACKAGE_PATH/MainActivity.java
+          package com.mitotalplayer.app;
 
-      - name: Recreate Android Project
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.view.WindowManager;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                      WindowManager.LayoutParams layoutParams = getWindow().getAttributes();
+                      layoutParams.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                      getWindow().setAttributes(layoutParams);
+                  }
+              }
+          }
+          EOF
+
+      - name: Configurar Permisos en AndroidManifest.xml
         run: |
-          rm -rf android
-          npx cap add android
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />' $MANIFEST
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />' $MANIFEST
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />' $MANIFEST
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />' $MANIFEST
 
-      - name: Restore Manifest
-        run: |
-          if [ -f "/tmp/manifest_backup/AndroidManifest.xml" ]; then
-            cp /tmp/manifest_backup/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
-          fi
+      - name: Sincronizar proyecto Capacitor
+        run: npx cap sync
 
-      - name: Copy Custom App Icon
-        run: |
-          if [ -f "icon.png" ]; then
-            find android/app/src/main/res/ -name "ic_launcher*.png" -exec cp icon.png {} \;
-          fi
-
-      - name: Sync Capacitor
-        run: npx cap sync android
-
-      - name: Build Android APK
+      - name: Compilar APK de Debug
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Upload APK Artifact
+      - name: Subir APK como Artefacto
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
+          name: MiTotalPlayer-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
