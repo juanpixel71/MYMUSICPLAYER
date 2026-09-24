@@ -1,13 +1,15 @@
 {
-  "name": "mitotalplayer",
+  "name": "musica-app",
   "version": "1.0.0",
-  "description": "Reproductor de Música Nativo",
+  "description": "Reproductor de Música Local",
   "main": "index.html",
   "scripts": {
-    "build": "mkdir -p www && cp -r index.html manifest.json sw.js icon.png www/"
+    "build": "mkdir -p www && cp index.html icon.png www/ 2>/dev/null || true",
+    "cap:sync": "cap sync"
   },
   "dependencies": {
     "@capacitor/android": "^6.0.0",
+    "@capacitor/app": "^6.0.0",
     "@capacitor/core": "^6.0.0",
     "@capacitor/filesystem": "^6.0.0",
     "@capacitor/status-bar": "^6.0.0"
