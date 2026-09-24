@@ -18,7 +18,7 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Configurar Java JDK 17
         uses: actions/setup-java@v5
@@ -35,7 +35,9 @@ jobs:
           cp -r *.html *.css manifest.json icon.png www/ 2>/dev/null || true
 
       - name: Generar Plataforma Android limpia
-        run: npx cap add android
+        run: |
+          rm -rf android
+          npx cap add android
 
       - name: Instalar ImageMagick para procesar iconos
         run: sudo apt-get update && sudo apt-get install -y imagemagick
