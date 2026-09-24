@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>MÚSICA PLAYER</title>
+
+  <style>
+    /* ==========================================
+       1. ESTILOS GLOBALES Y RESET
+       ========================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      border: none !important;
+      outline: none !important;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100dvh;
+      background-color: #3C3C3B;
+      color: #FFFFFF;
+      overflow: hidden;
+    }
+
+    .app-container {
+      width: 100vw;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background-color: #3C3C3B;
+    }
+
+    .header {
+      background-color: #FF8C00;
+      color: #FFFFFF;
+      padding: 16px;
+      padding-top: calc(20px + env(safe-area-inset-top, 20px));
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      flex-shrink: 0;
+    }
+
+    /* ==========================================
+       2. NAVEGACIÓN Y PANTALLAS
+       ========================================== */
+    .screen {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #3C3C3B;
+    }
+
+    .screen.active {
+      display: flex !important;
+    }
+
+    .view-content {
+      flex: 1;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    .btn-nav-back {
+      background-color: #FF8C00;
+      color: #FFFFFF;
+      padding: 16px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.1rem;
+      cursor: pointer;
+      border-radius: 10px;
+      margin-top: 0;
+      text-decoration: none;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    .btn-nav-back:active {
+      opacity: 0.8;
+    }
+
+    /* ==========================================
+       3. PANTALLA PRINCIPAL (HOME)
+       ========================================== */
+    .btn-main-home {
+      flex: 1;
+      background-color: #9D9D9C;
+      color: #FFFFFF;
+      border-radius: 12px;
+      font-size: 1.8rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      text-transform: uppercase;
+    }
+
+    .btn-main-home span { 
+      font-size: 3.5rem; 
+    }
+
+    .btn-main-home:active { 
+      background-color: #FF8C00; 
+    }
+
+    /* ==========================================
+       4. MÚSICA (ÁLBUMES Y CANCIONES)
+       ========================================== */
+    .albums-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      width: 100%;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+
+    .album-card-clean {
+      background-color: #9D9D9C;
+      color: #FFFFFF;
+      aspect-ratio: 1 / 1;
+      width: 100%;
+      min-width: 0;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      box-sizing: border-box;
+      cursor: pointer;
+      text-align: center;
+      font-size: 1.1rem;
+      font-weight: bold;
+      line-height: 1.35;
+      white-space: pre-line;
+      word-break: break-word;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .song-list { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 10px; 
+      overflow-y: auto; 
+      flex: 1;
+      min-height: 0;
+    }
+
+    .song-list .song-item {
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
+
+    .song-item { 
+      background-color: #9D9D9C; 
+      color: #FFFFFF; 
+      padding: 14px; 
+      border-radius: 8px; 
+      font-size: 0.95rem; 
+      font-weight: bold; 
+      cursor: pointer; 
+    }
+
+    .song-item.active-item,
+    .album-card-clean.active-item {
+      background-color: #FF8C00 !important;
+    }
+
+    /* ==========================================
+       5. REPRODUCTOR DE MÚSICA (SCREEN-PLAYER)
+       ========================================== */
+    .player-view-drive {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-evenly;
+      gap: 4px;
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      padding: 5px 15px;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+
+    .album-cover-drive {
+      width: 260px;
+      height: 260px;
+      background-color: #9D9D9C;
+      border-radius: 16px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-size: cover;
+      background-position: center;
+      flex-shrink: 0;
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    .track-details-drive { 
+      text-align: center; 
+      width: 100%; 
+      margin-bottom: 10px;
+    }
+
+    .track-details-drive h3 { 
+      font-size: 1.3rem; 
+      font-weight: bold; 
+      color: #FFFFFF; 
+      margin-bottom: 4px; 
+    }
+
+    .track-details-drive p { 
+      font-size: 1rem; 
+      color: #9D9D9C; 
+    }
+
+    .progress-bar-container { 
+      width: 100%; 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      margin-bottom: 2px;
+    }
+
+    .time-stamp { 
+      font-size: 0.9rem; 
+      font-weight: bold; 
+      color: #FFFFFF; 
+      width: 40px; 
+    }
+
+    .progress-bar { 
+      flex: 1; 
+      -webkit-appearance: none; 
+      height: 6px; 
+      background: #555555; 
+      border-radius: 3px; 
+    }
+
+    .progress-bar::-webkit-slider-thumb { 
+      -webkit-appearance: none; 
+      appearance: none; 
+      width: 18px; 
+      height: 18px; 
+      border-radius: 50%; 
+      background: #FF8C00; 
+      cursor: pointer; 
+    }
+
+    .media-controls-square { 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      gap: 20px; 
+      width: 100%; 
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    .btn-square { 
+      width: 95px; 
+      height: 95px; 
+      border-radius: 16px; 
+      background-color: #9D9D9C; 
+      color: #FFFFFF; 
+      font-size: 2.8rem; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      cursor: pointer; 
+    }
+
+    .btn-square.btn-square-main { 
+      width: 110px; 
+      height: 110px; 
+      background-color: #FF8C00 !important; 
+      background-image: none !important;
+      box-shadow: none !important;
+      -webkit-appearance: none !important;
+      font-size: 3.6rem; 
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- HOME -->
+    <div id="screen-home" class="screen active">
+      <div class="header">MÚSICA</div>
+      <div class="view-content" style="justify-content: space-between;">
+        <button class="btn-main-home" onclick="ejecutarAccionMusica()"><span>🎵</span> MI MÚSICA</button>
+        <button class="btn-nav-back" onclick="salirDeAplicacion()">&lt; SALIR DE LA APLICACIÓN</button>
+      </div>
+    </div>
+
+    <!-- ÁLBUMES -->
+    <div id="screen-albums" class="screen">
+      <div class="header">ÁLBUMES</div>
+      <div class="view-content">
+        <div id="albums-container" class="albums-grid"></div>
+        <button class="btn-nav-back" onclick="navigateTo('screen-home')">&lt; VOLVER HOME</button>
+      </div>
+    </div>
+
+    <!-- CANCIONES -->
+    <div id="screen-songs" class="screen">
+      <div id="album-header" class="header">ÁLBUM</div>
+      <div class="view-content">
+        <div id="songs-container" class="song-list"></div>
+        <button class="btn-nav-back" onclick="navigateTo('screen-albums')">&lt; VOLVER ÁLBUMES</button>
+      </div>
+    </div>
+
+    <!-- REPRODUCTOR -->
+    <div id="screen-player" class="screen">
+      <div class="header">REPRODUCIENDO</div>
+      <div class="view-content">
+        <div class="player-view-drive">
+          <div class="album-cover-drive" id="player-cover">
+            <span id="player-cover-icon" style="font-size: 5rem; color: #FFF;">🎵</span>
+          </div>
+          <div class="track-details-drive">
+            <h3 id="player-song-title">Canción</h3>
+            <p id="player-album-info">Álbum</p>
+          </div>
+          <div class="progress-bar-container">
+            <span id="current-time" class="time-stamp">0:00</span>
+            <input type="range" id="seek-bar" class="progress-bar" value="0" min="0" step="1">
+            <span id="total-time" class="time-stamp" style="text-align: right;">0:00</span>
+          </div>
+          <div class="media-controls-square">
+            <button class="btn-square" onclick="prevSong()">⏮</button>
+            <button class="btn-square btn-square-main" id="btn-play-pause" onclick="togglePlayMusic()">▶</button>
+            <button class="btn-square" onclick="nextSong()">⏭</button>
+          </div>
+          <audio id="audio-element"></audio>
+        </div>
+        <button class="btn-nav-back" onclick="pararYVolverCanciones()">&lt; VOLVER A CANCIONES</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    /* ==========================================
+       VARIABLES GLOBALES Y ELEMENTOS DOM
+       ========================================== */
+    let biblioteca = {};
+    let covers = {};
+    let albumActual = '';
+    let listaCancionesActual = [];
+    let indiceCancionActual = 0;
+
+    const audioElement = document.getElementById('audio-element');
+    const seekBar = document.getElementById('seek-bar');
+
+    /* ==========================================
+       CONTROL GENERAL Y NAVEGACIÓN
+       ========================================== */
+    function salirDeAplicacion() {
+      if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.App) {
+        Capacitor.Plugins.App.exitApp();
+      } else if (navigator.app && navigator.app.exitApp) {
+        navigator.app.exitApp();
+      } else {
+        window.close();
+      }
+    }
+
+    function navigateTo(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      const target = document.getElementById(screenId);
+      if (target) target.classList.add('active');
+
+      if (screenId === 'screen-home') {
+        detenerMusica();
+      }
+    }
+
+    function marcarBotonActivo(elemento) {
+      if (!elemento) return;
+      const contenedor = elemento.closest('.albums-grid, .song-list');
+      if (contenedor) {
+        contenedor.querySelectorAll('.album-card-clean, .song-item').forEach(b => b.classList.remove('active-item'));
+      }
+      elemento.classList.add('active-item');
+    }
+
+    /* ==========================================
+       MÚSICA Y BIBLIOTECA LOCAL / NATIVA
+       ========================================== */
+    function ejecutarAccionMusica() {
+      if (typeof window.AndroidBridge !== 'undefined' && typeof window.AndroidBridge.cargarMusica === 'function' && Object.keys(biblioteca).length === 0) {
+        window.AndroidBridge.cargarMusica();
+      } else {
+        renderAlbums();
+        navigateTo('screen-albums');
+      }
+    }
+
+    window.recibirBibliotecaNativa = function(bibliotecaRecibida, coversRecibidas) {
+      biblioteca = bibliotecaRecibida || {};
+      covers = coversRecibidas || {};
+      renderAlbums();
+      navigateTo('screen-albums');
+    };
+
+    function renderAlbums() {
+      const container = document.getElementById('albums-container');
+      if (!container) return;
+      container.innerHTML = '';
+      const nombresAlbumes = Object.keys(biblioteca).sort();
+
+      if (nombresAlbumes.length === 0) {
+        container.innerHTML = '<p style="grid-column: span 2; text-align:center; color:#9D9D9C; padding: 20px;">No se encontraron canciones en la carpeta MiMusica.</p>';
+        return;
+      }
+
+      nombresAlbumes.forEach(album => {
+        const card = document.createElement('div');
+        card.className = 'album-card-clean';
+        card.innerText = album.replace(/\s*\((.*?)\)\s*/g, "\n($1)\n");
+
+        const claveAlbum = album.toLowerCase();
+        if (covers[claveAlbum]) {
+          card.style.backgroundImage = `url('${covers[claveAlbum]}')`;
+          card.style.color = 'transparent';
+        }
+
+        card.onclick = () => {
+          marcarBotonActivo(card);
+          showSongs(album);
+        };
+        container.appendChild(card);
+      });
+    }
+
+    function showSongs(album) {
+      albumActual = album;
+      listaCancionesActual = biblioteca[album] || [];
+      const headerElem = document.getElementById('album-header');
+      if (headerElem) headerElem.innerText = album;
+      
+      const container = document.getElementById('songs-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      listaCancionesActual.forEach((song, idx) => {
+        const item = document.createElement('div');
+        item.className = 'song-item';
+        item.innerText = (typeof song === 'object' ? (song.nombre || song.file) : song) || 'Canción sin nombre';
+        item.onclick = () => {
+          marcarBotonActivo(item);
+          indiceCancionActual = idx;
+          playSong(song);
+        };
+        container.appendChild(item);
+      });
+
+      navigateTo('screen-songs');
+    }
+
+    function playSong(song) {
+      let nombre = '';
+      let url = '';
+
+      if (typeof song === 'object' && song !== null) {
+        nombre = song.nombre || song.title || 'Pista desconocida';
+        url = song.archivo || song.path || song.url || '';
+      } else {
+        nombre = String(song);
+        url = String(song);
+      }
+
+      if (url && !url.startsWith('http') && !url.startsWith('blob:')) {
+        if (typeof Capacitor !== 'undefined' && typeof Capacitor.convertFileSrc === 'function') {
+          url = Capacitor.convertFileSrc(url);
+        } else if (!url.startsWith('file://') && !url.startsWith('content://') && !url.startsWith('capacitor://')) {
+          url = 'file://' + url;
+        }
+      }
+
+      const titleElem = document.getElementById('player-song-title');
+      const infoElem = document.getElementById('player-album-info');
+      if (titleElem) titleElem.innerText = nombre;
+      if (infoElem) infoElem.innerText = albumActual;
+
+      const playerCover = document.getElementById('player-cover');
+      const playerCoverIcon = document.getElementById('player-cover-icon');
+      const claveAlbum = albumActual.toLowerCase();
+
+      if (playerCover && playerCoverIcon) {
+        if (covers[claveAlbum]) {
+          playerCover.style.backgroundImage = `url('${covers[claveAlbum]}')`;
+          playerCoverIcon.style.display = 'none';
+        } else {
+          playerCover.style.backgroundImage = 'none';
+          playerCoverIcon.style.display = 'block';
+        }
+      }
+      
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.src = url;
+        audioElement.load();
+        
+        audioElement.play().then(() => {
+          const btnPlay = document.getElementById('btn-play-pause');
+          if (btnPlay) btnPlay.innerText = '⏸';
+        }).catch(error => {
+          console.log("Error al reproducir audio:", error);
+          const btnPlay = document.getElementById('btn-play-pause');
+          if (btnPlay) btnPlay.innerText = '▶';
+        });
+      }
+
+      navigateTo('screen-player');
+    }
+
+    function togglePlayMusic() {
+      if (!audioElement) return;
+      const btnPlay = document.getElementById('btn-play-pause');
+      if (audioElement.paused) {
+        audioElement.play().then(() => {
+          if (btnPlay) btnPlay.innerText = '⏸';
+        }).catch(e => console.log("Error al reanudar:", e));
+      } else {
+        audioElement.pause();
+        if (btnPlay) btnPlay.innerText = '▶';
+      }
+    }
+
+    function detenerMusica() {
+      if (!audioElement) return;
+      audioElement.pause();
+      audioElement.currentTime = 0;
+      const btnPlay = document.getElementById('btn-play-pause');
+      if (btnPlay) btnPlay.innerText = '▶';
+    }
+
+    function pararYVolverCanciones() {
+      detenerMusica();
+      navigateTo('screen-songs');
+    }
+
+    function prevSong() {
+      if (listaCancionesActual.length === 0) return;
+      indiceCancionActual = (indiceCancionActual - 1 + listaCancionesActual.length) % listaCancionesActual.length;
+      playSong(listaCancionesActual[indiceCancionActual]);
+    }
+
+    function nextSong() {
+      if (listaCancionesActual.length === 0) return;
+      indiceCancionActual = (indiceCancionActual + 1) % listaCancionesActual.length;
+      playSong(listaCancionesActual[indiceCancionActual]);
+    }
+
+    if (audioElement) {
+      audioElement.addEventListener('ended', nextSong);
+      audioElement.addEventListener('timeupdate', () => {
+        if (!isNaN(audioElement.duration) && seekBar) {
+          seekBar.max = Math.floor(audioElement.duration);
+          seekBar.value = Math.floor(audioElement.currentTime);
+          const currTime = document.getElementById('current-time');
+          const totTime = document.getElementById('total-time');
+          if (currTime) currTime.innerText = formatTime(audioElement.currentTime);
+          if (totTime) totTime.innerText = formatTime(audioElement.duration);
+        }
+      });
+    }
+
+    if (seekBar) {
+      seekBar.addEventListener('input', () => { 
+        if (audioElement) audioElement.currentTime = seekBar.value; 
+      });
+    }
+
+    function formatTime(seconds) {
+      if (isNaN(seconds)) return "0:00";
+      let min = Math.floor(seconds / 60);
+      let sec = Math.floor(seconds % 60);
+      return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+    }
+  </script>
+</body>
+</html>
