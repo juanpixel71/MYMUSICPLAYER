@@ -569,6 +569,11 @@
       let sec = Math.floor(seconds % 60);
       return `${min}:${sec < 10 ? '0' : ''}${sec}`;
     }
+
+    /* Inicialización automática al arrancar la app en ÁLBUMES */
+    document.addEventListener('DOMContentLoaded', () => {
+      ejecutarAccionMusica();
+    });
   </script>
 </body>
 </html>
