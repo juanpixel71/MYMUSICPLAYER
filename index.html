@@ -100,33 +100,7 @@
     }
 
     /* ==========================================
-       3. PANTALLA PRINCIPAL (HOME)
-       ========================================== */
-    .btn-main-home {
-      flex: 1;
-      background-color: #9D9D9C;
-      color: #FFFFFF;
-      border-radius: 12px;
-      font-size: 1.8rem;
-      font-weight: bold;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      text-transform: uppercase;
-    }
-
-    .btn-main-home span { 
-      font-size: 3.5rem; 
-    }
-
-    .btn-main-home:active { 
-      background-color: #FF8C00; 
-    }
-
-    /* ==========================================
-       4. MÚSICA (ÁLBUMES Y CANCIONES)
+       3. MÚSICA (ÁLBUMES Y CANCIONES)
        ========================================== */
     .albums-grid {
       display: grid;
@@ -191,7 +165,7 @@
     }
 
     /* ==========================================
-       5. REPRODUCTOR DE MÚSICA (SCREEN-PLAYER)
+       4. REPRODUCTOR DE MÚSICA (SCREEN-PLAYER)
        ========================================== */
     .player-view-drive {
       display: flex;
@@ -310,22 +284,13 @@
 <body>
 
   <div class="app-container">
-    
-    <!-- HOME -->
-    <div id="screen-home" class="screen active">
-      <div class="header">MÚSICA</div>
-      <div class="view-content" style="justify-content: space-between;">
-        <button class="btn-main-home" onclick="ejecutarAccionMusica()"><span>🎵</span> MI MÚSICA</button>
-        <button class="btn-nav-back" onclick="salirDeAplicacion()">&lt; SALIR DE LA APLICACIÓN</button>
-      </div>
-    </div>
 
     <!-- ÁLBUMES -->
-    <div id="screen-albums" class="screen">
+    <div id="screen-albums" class="screen active">
       <div class="header">ÁLBUMES</div>
       <div class="view-content">
         <div id="albums-container" class="albums-grid"></div>
-        <button class="btn-nav-back" onclick="navigateTo('screen-home')">&lt; VOLVER HOME</button>
+        <button class="btn-nav-back" onclick="salirDeAplicacion()">&lt; SALIR DE LA APLICACIÓN</button>
       </div>
     </div>
 
@@ -398,10 +363,6 @@
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       const target = document.getElementById(screenId);
       if (target) target.classList.add('active');
-
-      if (screenId === 'screen-home') {
-        detenerMusica();
-      }
     }
 
     function marcarBotonActivo(elemento) {
