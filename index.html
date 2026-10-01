@@ -446,20 +446,20 @@
       if (typeof jsmediatags !== 'undefined' && urlAudio) {
         jsmediatags.read(urlAudio, {
           onSuccess: function(tag) {
-            const tags = tag.tags;
+            const tags = tag.tags || {};
 
             // Extraer Artista
             if (tags.artist) {
               if (artistElem) artistElem.innerText = tags.artist;
-            } else if (artistElem && artistaInicial) {
-              artistElem.innerText = artistaInicial;
+            } else if (artistElem) {
+              artistElem.innerText = artistaInicial || 'Artista desconocido';
             }
 
             // Extraer Álbum
             if (tags.album) {
               if (albumElem) albumElem.innerText = 'Álbum: ' + tags.album;
-            } else if (albumElem && albumInicial) {
-              albumElem.innerText = 'Álbum: ' + albumInicial;
+            } else if (albumElem) {
+              albumElem.innerText = albumInicial ? 'Álbum: ' + albumInicial : 'Álbum: Desconocido';
             }
 
             // Extraer Carátula
@@ -479,11 +479,16 @@
             }
           },
           onError: function(error) {
-            console.log('Error leyendo ID3:', error);
+            console.log('No se pudieron leer metadatos, usando valores por defecto:', error);
+            // Si hay error en metadatos, no interrumpe la reproducción y asigna textos por defecto
+            if (artistElem) artistElem.innerText = artistaInicial || 'Artista desconocido';
+            if (albumElem) albumElem.innerText = albumInicial ? 'Álbum: ' + albumInicial : 'Álbum: Desconocido';
             mostrarCoverPorDefecto();
           }
         });
       } else {
+        if (artistElem) artistElem.innerText = artistaInicial || 'Artista desconocido';
+        if (albumElem) albumElem.innerText = albumInicial ? 'Álbum: ' + albumInicial : 'Álbum: Desconocido';
         mostrarCoverPorDefecto();
       }
     }
@@ -540,7 +545,7 @@
         }
       }
 
-      // Actualizar Título, Artista, Nombre de archivo y Álbum
+      // Actualizar Título, Artista, Nombre de archivo y Álbum en el DOM
       const titleElem = document.getElementById('player-song-title');
       const artistElem = document.getElementById('player-artist-info');
       const fileNameElem = document.getElementById('player-filename-info');
@@ -549,9 +554,9 @@
       if (titleElem) titleElem.innerText = nombre;
       if (artistElem) artistElem.innerText = artista;
       if (fileNameElem) fileNameElem.innerText = 'Archivo: ' + (fileName || nombre);
-      if (albumElem) albumElem.innerText = album ? 'Álbum: ' + album : '';
+      if (albumElem) albumElem.innerText = album ? 'Álbum: ' + album : 'Álbum: Desconocido';
 
-      // Cargar Carátula desde los TAGs ID3 o metadata
+      // Cargar Carátula desde los TAGs ID3 o metadata sin detener la reproducción
       if (portadaRaw) {
         const playerCover = document.getElementById('player-cover');
         const playerCoverIcon = document.getElementById('player-cover-icon');
@@ -567,7 +572,7 @@
         cargarMetadatosDesdeTag(url || rawAudioUrl, artista, album);
       }
 
-      // Reproducción
+      // Reproducción asegurada del elemento de audio
       if (audioElement) {
         audioElement.pause();
         audioElement.src = url;
