@@ -43,8 +43,8 @@
     .header {
       background-color: #FF8C00;
       color: #FFFFFF;
-      padding: 16px;
-      padding-top: calc(20px + env(safe-area-inset-top, 20px));
+      padding: 14px;
+      padding-top: calc(16px + env(safe-area-inset-top, 16px));
       text-align: center;
       font-weight: bold;
       font-size: 1.2rem;
@@ -74,22 +74,22 @@
 
     .view-content {
       flex: 1;
-      padding: 15px;
+      padding: 10px 15px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       gap: 10px;
-      overflow-y: auto;
+      overflow-y: hidden;
       min-height: 0;
     }
 
     .btn-nav-back {
       background-color: #FF8C00;
       color: #FFFFFF;
-      padding: 16px;
+      padding: 14px;
       text-align: center;
       font-weight: bold;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       cursor: pointer;
       border-radius: 10px;
       margin-top: 0;
@@ -103,23 +103,27 @@
     }
 
     /* ==========================================
-       3. PANTALLA PLAYLIST (ESQUEMA SOLICITADO)
+       3. PANTALLA PLAYLIST (AJUSTADA PARA 8 FILAS)
        ========================================== */
     .playlist-container {
       flex: 1;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      min-height: 0;
     }
 
     .playlist-item {
       display: flex;
       align-items: center;
-      padding: 10px 5px;
+      height: calc((100dvh - 150px) / 8); /* Cálculo dinamico para mostrar exactamente 8 filas */
+      min-height: 52px;
+      max-height: 68px;
+      padding: 4px 5px;
       border-bottom: 1px solid #4A4A49 !important;
       cursor: pointer;
-      gap: 15px;
+      gap: 12px;
+      box-sizing: border-box;
     }
 
     .playlist-item:active {
@@ -127,9 +131,9 @@
     }
 
     .playlist-thumb {
-      width: 55px;
-      height: 55px;
-      border-radius: 8px;
+      width: 46px;
+      height: 46px;
+      border-radius: 6px;
       background-color: #9D9D9C;
       background-size: cover;
       background-position: center;
@@ -137,17 +141,18 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      font-size: 1.5rem;
+      font-size: 1.3rem;
     }
 
     .playlist-info {
       display: flex;
       flex-direction: column;
+      justify-content: center;
       overflow: hidden;
     }
 
     .playlist-title {
-      font-size: 1.1rem;
+      font-size: 1rem;
       font-weight: bold;
       color: #FFFFFF;
       white-space: nowrap;
@@ -156,9 +161,9 @@
     }
 
     .playlist-artist {
-      font-size: 0.95rem;
+      font-size: 0.85rem;
       color: #9D9D9C;
-      margin-top: 2px;
+      margin-top: 1px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -231,11 +236,12 @@
       width: 40px; 
     }
 
+    /* BARRA DE PROGRESO CON RELLENO DINÁMICO NARANJA */
     .progress-bar { 
       flex: 1; 
       -webkit-appearance: none; 
       height: 6px; 
-      background: #555555; 
+      background: linear-gradient(to right, #FF8C00 0%, #FF8C00 0%, #555555 0%, #555555 100%); 
       border-radius: 3px; 
     }
 
@@ -273,8 +279,20 @@
       font-weight: bold;
     }
 
-    /* BOTONES DESTACADOS: PLAY/PAUSE Y SHUFFLE DEL MISMO TAMAÑO */
-    .btn-square.btn-square-main { 
+    /* PLAY/PAUSE EN GRIS Y SHUFFLE EN NARANJA */
+    .btn-square.btn-square-main-gray { 
+      width: 85px !important; 
+      height: 85px !important; 
+      background-color: #9D9D9C !important; 
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      font-size: 2.5rem;
+    }
+
+    .btn-square.btn-square-main-orange { 
       width: 85px !important; 
       height: 85px !important; 
       background-color: #FF8C00 !important; 
@@ -326,16 +344,16 @@
             <span id="total-time" class="time-stamp" style="text-align: right;">0:00</span>
           </div>
           <div class="media-controls-square">
-            <button class="btn-square" onclick="prevSong()">⏮</button>
-            <!-- BOTÓN PLAY/PAUSE -->
-            <button class="btn-square btn-square-main" id="btn-toggle-play" onclick="togglePlayPause()">❚❚</button>
-            <!-- BOTÓN SHUFFLE DEL MISMO TAMAÑO -->
-            <button class="btn-square btn-square-main" id="btn-shuffle" onclick="siguienteCancionAleatoria()">
+            <button class="btn-square" onclick="prevSongAZ()">⏮</button>
+            <!-- BOTÓN PLAY/PAUSE EN GRIS -->
+            <button class="btn-square btn-square-main-gray" id="btn-toggle-play" onclick="togglePlayPause()">❚❚</button>
+            <!-- BOTÓN SHUFFLE EN NARANJA -->
+            <button class="btn-square btn-square-main-orange" id="btn-shuffle" onclick="siguienteCancionAleatoria()">
               <svg class="shuffle-icon" viewBox="0 0 24 24">
                 <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.45 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
               </svg>
             </button>
-            <button class="btn-square" onclick="nextSong()">⏭</button>
+            <button class="btn-square" onclick="nextSongAZ()">⏭</button>
           </div>
           <audio id="audio-element"></audio>
         </div>
@@ -351,8 +369,7 @@
        ========================================== */
     let todasLasCanciones = [];
     let colaAleatoria = [];
-    let historialReproducción = [];
-    let indiceHistorial = -1;
+    let indiceCancionActualAZ = -1;
 
     const audioElement = document.getElementById('audio-element');
     const seekBar = document.getElementById('seek-bar');
@@ -368,7 +385,6 @@
     }
 
     function volverAPlaylist() {
-      // Detener música al volver a la playlist
       if (audioElement) {
         audioElement.pause();
       }
@@ -412,28 +428,71 @@
           <div class="playlist-thumb" id="thumb-${index}">🎵</div>
           <div class="playlist-info">
             <div class="playlist-title">${nombre}</div>
-            <div class="playlist-artist">${artista}</div>
+            <div class="playlist-artist" id="artist-playlist-${index}">${artista}</div>
           </div>
         `;
 
         item.onclick = () => {
+          indiceCancionActualAZ = index;
           playSong(cancion);
           cambiarPantalla('screen-player');
         };
 
         contenedor.appendChild(item);
 
-        // Si tiene miniatura o se puede extraer metadata
+        // Si ya incluye portada directa la asignamos
         if (cancion.portada) {
-          const thumbElem = document.getElementById(`thumb-${index}`);
-          if (thumbElem) {
-            let srcImg = cancion.portada;
-            if (srcImg.length > 100 && !srcImg.startsWith('data:') && !srcImg.startsWith('http') && !srcImg.startsWith('file:')) {
-              srcImg = 'data:image/jpeg;base64,' + srcImg;
-            }
-            thumbElem.style.backgroundImage = `url('${srcImg}')`;
-            thumbElem.innerText = '';
+          asignarImagenThumb(index, cancion.portada);
+        } else {
+          // Extraer la carátula y el artista de forma asíncrona para la playlist
+          extraerMetadatosParaPlaylist(cancion, index);
+        }
+      });
+    }
+
+    function asignarImagenThumb(index, fuenteImg) {
+      const thumbElem = document.getElementById(`thumb-${index}`);
+      if (thumbElem) {
+        let srcImg = fuenteImg;
+        if (srcImg.length > 100 && !srcImg.startsWith('data:') && !srcImg.startsWith('http') && !srcImg.startsWith('file:')) {
+          srcImg = 'data:image/jpeg;base64,' + srcImg;
+        }
+        thumbElem.style.backgroundImage = `url('${srcImg}')`;
+        thumbElem.innerText = '';
+      }
+    }
+
+    function extraerMetadatosParaPlaylist(songObj, index) {
+      if (typeof jsmediatags === 'undefined' || !songObj) return;
+
+      let urlAudio = songObj.archivo || songObj.path || songObj.url || '';
+      if (!urlAudio) return;
+
+      jsmediatags.read(urlAudio, {
+        onSuccess: function(tag) {
+          const tags = tag.tags || {};
+
+          // Actualizar Artista si existía en tags
+          if (tags.artist) {
+            songObj.artista = tags.artist;
+            const artistElem = document.getElementById(`artist-playlist-${index}`);
+            if (artistElem) artistElem.innerText = tags.artist;
           }
+
+          // Extraer Imagen
+          const picture = tags.picture;
+          if (picture) {
+            let base64String = "";
+            for (let i = 0; i < picture.data.length; i++) {
+              base64String += String.fromCharCode(picture.data[i]);
+            }
+            const base64 = "data:" + picture.format + ";base64," + window.btoa(base64String);
+            songObj.portada = base64;
+            asignarImagenThumb(index, base64);
+          }
+        },
+        onError: function() {
+          // Mantener icono musical por defecto
         }
       });
     }
@@ -526,7 +585,7 @@
     };
 
     /* ==========================================
-       LÓGICA DE MODO ALEATORIO (SHUFFLE)
+       NAVEGACIÓN A-Z Y SHUFFLE
        ========================================== */
     function meclarArray(array) {
       const copia = [...array];
@@ -545,33 +604,36 @@
     function siguienteCancionAleatoria() {
       if (todasLasCanciones.length === 0) return;
 
-      if (indiceHistorial < historialReproducción.length - 1) {
-        indiceHistorial++;
-        playSong(historialReproducción[indiceHistorial]);
-        return;
-      }
-
       if (colaAleatoria.length === 0) {
         reiniciarColaAleatoria();
       }
 
       const proximaCancion = colaAleatoria.shift();
-      historialReproducción.push(proximaCancion);
-      indiceHistorial = historialReproducción.length - 1;
+      indiceCancionActualAZ = todasLasCanciones.indexOf(proximaCancion);
 
       playSong(proximaCancion);
     }
 
-    function prevSong() {
-      if (historialReproducción.length === 0) return;
-      if (indiceHistorial > 0) {
-        indiceHistorial--;
-        playSong(historialReproducción[indiceHistorial]);
+    // Salto a la canción anterior siguiendo la secuencia A-Z
+    function prevSongAZ() {
+      if (todasLasCanciones.length === 0) return;
+      if (indiceCancionActualAZ > 0) {
+        indiceCancionActualAZ--;
+      } else {
+        indiceCancionActualAZ = todasLasCanciones.length - 1; // Bucle al final
       }
+      playSong(todasLasCanciones[indiceCancionActualAZ]);
     }
 
-    function nextSong() {
-      siguienteCancionAleatoria();
+    // Salto a la siguiente canción siguiendo la secuencia A-Z
+    function nextSongAZ() {
+      if (todasLasCanciones.length === 0) return;
+      if (indiceCancionActualAZ < todasLasCanciones.length - 1) {
+        indiceCancionActualAZ++;
+      } else {
+        indiceCancionActualAZ = 0; // Bucle al inicio
+      }
+      playSong(todasLasCanciones[indiceCancionActualAZ]);
     }
 
     /* ==========================================
@@ -737,13 +799,18 @@
        ========================================== */
     if (audioElement) {
       audioElement.addEventListener('ended', () => {
-        siguienteCancionAleatoria();
+        nextSongAZ(); // Siguiente según secuencia A-Z
       });
 
       audioElement.addEventListener('timeupdate', () => {
         if (!isNaN(audioElement.duration) && seekBar) {
           seekBar.max = Math.floor(audioElement.duration);
           seekBar.value = Math.floor(audioElement.currentTime);
+          
+          // Porcentaje recorrido para pintar la barra de naranja
+          const porcentaje = (audioElement.currentTime / audioElement.duration) * 100;
+          seekBar.style.background = `linear-gradient(to right, #FF8C00 0%, #FF8C00 ${porcentaje}%, #555555 ${porcentaje}%, #555555 100%)`;
+
           const currTime = document.getElementById('current-time');
           const totTime = document.getElementById('total-time');
           if (currTime) currTime.innerText = formatTime(audioElement.currentTime);
@@ -754,7 +821,11 @@
 
     if (seekBar) {
       seekBar.addEventListener('input', () => { 
-        if (audioElement) audioElement.currentTime = seekBar.value; 
+        if (audioElement) {
+          audioElement.currentTime = seekBar.value;
+          const porcentaje = (seekBar.value / seekBar.max) * 100;
+          seekBar.style.background = `linear-gradient(to right, #FF8C00 0%, #FF8C00 ${porcentaje}%, #555555 ${porcentaje}%, #555555 100%)`;
+        }
       });
     }
 
