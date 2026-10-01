@@ -126,6 +126,7 @@
       align-items: center;
       background-size: cover;
       background-position: center;
+      background-repeat: no-repeat;
       flex-shrink: 0;
       margin-top: 0;
       margin-bottom: 0;
@@ -212,7 +213,12 @@
       background-image: none !important;
       box-shadow: none !important;
       -webkit-appearance: none !important;
-      font-size: 3.6rem; 
+      font-size: 4rem; 
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      line-height: 1 !important;
+      padding-bottom: 4px;
     }
   </style>
 </head>
@@ -286,6 +292,7 @@
 
     window.recibirBibliotecaNativa = function(bibliotecaRecibida, coversRecibidas) {
       const cancionesExtraidas = [];
+      const mapaCovers = coversRecibidas || {};
       
       if (Array.isArray(bibliotecaRecibida)) {
         cancionesExtraidas.push(...bibliotecaRecibida);
@@ -298,10 +305,12 @@
                 if (!item.album) item.album = album;
                 cancionesExtraidas.push(item);
               } else {
+                const claveAlbum = album.toLowerCase();
                 cancionesExtraidas.push({
                   nombre: String(item),
                   archivo: String(item),
-                  album: album
+                  album: album,
+                  portada: mapaCovers[claveAlbum] || ''
                 });
               }
             });
@@ -336,14 +345,12 @@
     function siguienteCancionAleatoria() {
       if (todasLasCanciones.length === 0) return;
 
-      // Si nos encontramos en un punto intermedio del historial y pulsamos aleatorio / siguiente
       if (indiceHistorial < historialReproducción.length - 1) {
         indiceHistorial++;
         playSong(historialReproducción[indiceHistorial]);
         return;
       }
 
-      // Si consumimos todas las canciones no repetidas, volvemos a mezclar automáticamente
       if (colaAleatoria.length === 0) {
         reiniciarColaAleatoria();
       }
@@ -370,21 +377,43 @@
     /* ==========================================
        REPRODUCCIÓN Y METADATOS (CARÁTULA, TÍTULO, ÁLBUM)
        ========================================== */
+    function procesarUrlImagen(imagenRaw) {
+      if (!imagenRaw) return '';
+      let urlImg = String(imagenRaw).trim();
+
+      // Si viene en Base64 sin cabecera Data URL
+      if (!urlImg.startsWith('http') && !urlImg.startsWith('data:') && !urlImg.startsWith('file:') && !urlImg.startsWith('content:') && !urlImg.startsWith('capacitor:')) {
+        if (urlImg.length > 100) {
+          urlImg = 'data:image/jpeg;base64,' + urlImg;
+        }
+      }
+
+      // Tratamiento de rutas nativas Android / Capacitor
+      if (urlImg && !urlImg.startsWith('http') && !urlImg.startsWith('data:')) {
+        if (typeof Capacitor !== 'undefined' && typeof Capacitor.convertFileSrc === 'function') {
+          urlImg = Capacitor.convertFileSrc(urlImg);
+        } else if (!urlImg.startsWith('file://') && !urlImg.startsWith('content://') && !urlImg.startsWith('capacitor://')) {
+          urlImg = 'file://' + urlImg;
+        }
+      }
+
+      return urlImg;
+    }
+
     function playSong(song) {
       if (!song) return;
 
       let nombre = '';
       let album = '';
       let url = '';
-      let portadaUrl = '';
+      let portadaRaw = '';
 
       if (typeof song === 'object' && song !== null) {
         nombre = song.titulo || song.nombre || song.title || '';
         album = song.album || song.albumName || '';
         url = song.archivo || song.path || song.url || '';
-        portadaUrl = song.portada || song.cover || song.art || song.imagen || '';
+        portadaRaw = song.portada || song.cover || song.art || song.imagen || song.caratula || song.albumArt || song.coverUri || '';
 
-        // Si no existe título en metadatos, extraemos del nombre del archivo sin extensión
         if (!nombre && url) {
           const nombreLimpio = url.split('/').pop().split('\\').pop();
           nombre = nombreLimpio.substring(0, nombreLimpio.lastIndexOf('.')) || nombreLimpio;
@@ -399,7 +428,6 @@
       if (!nombre) nombre = 'Canción desconocida';
       if (!album) album = 'Álbum desconocido';
 
-      // Tratamiento de rutas locales en Android / Capacitor / File URL
       if (url && !url.startsWith('http') && !url.startsWith('blob:') && !url.startsWith('data:')) {
         if (typeof Capacitor !== 'undefined' && typeof Capacitor.convertFileSrc === 'function') {
           url = Capacitor.convertFileSrc(url);
@@ -408,19 +436,20 @@
         }
       }
 
-      // Actualizar UI - Título y Álbum desde los metadatos
+      // Actualizar UI - Título y Álbum
       const titleElem = document.getElementById('player-song-title');
       const infoElem = document.getElementById('player-album-info');
       if (titleElem) titleElem.innerText = nombre;
       if (infoElem) infoElem.innerText = album;
 
-      // Actualizar UI - Carátula/Imagen de metadatos
+      // Actualizar UI - Carátula procesada
       const playerCover = document.getElementById('player-cover');
       const playerCoverIcon = document.getElementById('player-cover-icon');
+      const portadaProcesada = procesarUrlImagen(portadaRaw);
 
       if (playerCover && playerCoverIcon) {
-        if (portadaUrl) {
-          playerCover.style.backgroundImage = `url('${portadaUrl}')`;
+        if (portadaProcesada) {
+          playerCover.style.backgroundImage = `url('${portadaProcesada}')`;
           playerCoverIcon.style.display = 'none';
         } else {
           playerCover.style.backgroundImage = 'none';
