@@ -43,8 +43,8 @@
     .header {
       background-color: #FF8C00;
       color: #FFFFFF;
-      padding: 14px;
-      padding-top: calc(16px + env(safe-area-inset-top, 16px));
+      padding: 16px;
+      padding-top: calc(20px + env(safe-area-inset-top, 20px));
       text-align: center;
       font-weight: bold;
       font-size: 1.2rem;
@@ -74,22 +74,22 @@
 
     .view-content {
       flex: 1;
-      padding: 10px 15px;
+      padding: 15px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       gap: 10px;
-      overflow-y: hidden;
+      overflow: hidden;
       min-height: 0;
     }
 
     .btn-nav-back {
       background-color: #FF8C00;
       color: #FFFFFF;
-      padding: 14px;
+      padding: 16px;
       text-align: center;
       font-weight: bold;
-      font-size: 1.05rem;
+      font-size: 1.1rem;
       cursor: pointer;
       border-radius: 10px;
       margin-top: 0;
@@ -103,7 +103,7 @@
     }
 
     /* ==========================================
-       3. PANTALLA PLAYLIST (AJUSTADA PARA 8 FILAS)
+       3. PANTALLA PLAYLIST (DISEÑO LIMPIO RESTAURADO)
        ========================================== */
     .playlist-container {
       flex: 1;
@@ -116,14 +116,11 @@
     .playlist-item {
       display: flex;
       align-items: center;
-      height: calc((100dvh - 150px) / 8); /* Cálculo dinamico para mostrar exactamente 8 filas */
-      min-height: 52px;
-      max-height: 68px;
-      padding: 4px 5px;
+      padding: 10px 5px;
       border-bottom: 1px solid #4A4A49 !important;
       cursor: pointer;
-      gap: 12px;
-      box-sizing: border-box;
+      gap: 15px;
+      flex-shrink: 0;
     }
 
     .playlist-item:active {
@@ -131,9 +128,9 @@
     }
 
     .playlist-thumb {
-      width: 46px;
-      height: 46px;
-      border-radius: 6px;
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
       background-color: #9D9D9C;
       background-size: cover;
       background-position: center;
@@ -141,7 +138,7 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      font-size: 1.3rem;
+      font-size: 1.4rem;
     }
 
     .playlist-info {
@@ -152,7 +149,7 @@
     }
 
     .playlist-title {
-      font-size: 1rem;
+      font-size: 1.05rem;
       font-weight: bold;
       color: #FFFFFF;
       white-space: nowrap;
@@ -161,9 +158,9 @@
     }
 
     .playlist-artist {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: #9D9D9C;
-      margin-top: 1px;
+      margin-top: 2px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -236,7 +233,6 @@
       width: 40px; 
     }
 
-    /* BARRA DE PROGRESO CON RELLENO DINÁMICO NARANJA */
     .progress-bar { 
       flex: 1; 
       -webkit-appearance: none; 
@@ -279,11 +275,10 @@
       font-weight: bold;
     }
 
-    /* PLAY/PAUSE EN GRIS Y SHUFFLE EN NARANJA */
-    .btn-square.btn-square-main-gray { 
+    /* BOTONES PRINCIPALES DEL MISMO TAMAÑO */
+    .btn-square.btn-square-main { 
       width: 85px !important; 
       height: 85px !important; 
-      background-color: #9D9D9C !important; 
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
@@ -292,16 +287,18 @@
       font-size: 2.5rem;
     }
 
-    .btn-square.btn-square-main-orange { 
-      width: 85px !important; 
-      height: 85px !important; 
-      background-color: #FF8C00 !important; 
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      font-size: 2.5rem;
+    /* ESTADOS DE COLOR DE PLAY/PAUSE */
+    .btn-square-main.is-playing {
+      background-color: #9D9D9C !important; /* Gris reproduciendo */
+    }
+
+    .btn-square-main.is-paused {
+      background-color: #FF8C00 !important; /* Naranja en pausa */
+    }
+
+    /* SHUFFLE SIEMPRE NARANJA */
+    .btn-square-main.btn-shuffle-orange {
+      background-color: #FF8C00 !important;
     }
 
     .shuffle-icon {
@@ -345,10 +342,10 @@
           </div>
           <div class="media-controls-square">
             <button class="btn-square" onclick="prevSongAZ()">⏮</button>
-            <!-- BOTÓN PLAY/PAUSE EN GRIS -->
-            <button class="btn-square btn-square-main-gray" id="btn-toggle-play" onclick="togglePlayPause()">❚❚</button>
+            <!-- BOTÓN PLAY/PAUSE CONMUTABLE -->
+            <button class="btn-square btn-square-main is-playing" id="btn-toggle-play" onclick="togglePlayPause()">❚❚</button>
             <!-- BOTÓN SHUFFLE EN NARANJA -->
-            <button class="btn-square btn-square-main-orange" id="btn-shuffle" onclick="siguienteCancionAleatoria()">
+            <button class="btn-square btn-square-main btn-shuffle-orange" id="btn-shuffle" onclick="siguienteCancionAleatoria()">
               <svg class="shuffle-icon" viewBox="0 0 24 24">
                 <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.45 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
               </svg>
@@ -388,7 +385,7 @@
       if (audioElement) {
         audioElement.pause();
       }
-      actualizarIconoPlayPause(false);
+      actualizarEstadoPlayPause(false);
       cambiarPantalla('screen-playlist');
     }
 
@@ -440,12 +437,11 @@
 
         contenedor.appendChild(item);
 
-        // Si ya incluye portada directa la asignamos
         if (cancion.portada) {
           asignarImagenThumb(index, cancion.portada);
         } else {
-          // Extraer la carátula y el artista de forma asíncrona para la playlist
-          extraerMetadatosParaPlaylist(cancion, index);
+          // Extraer metadatos de fondo sin bloquear el hilo principal
+          setTimeout(() => extraerMetadatosParaPlaylist(cancion, index), 50 * index);
         }
       });
     }
@@ -472,14 +468,12 @@
         onSuccess: function(tag) {
           const tags = tag.tags || {};
 
-          // Actualizar Artista si existía en tags
           if (tags.artist) {
             songObj.artista = tags.artist;
             const artistElem = document.getElementById(`artist-playlist-${index}`);
             if (artistElem) artistElem.innerText = tags.artist;
           }
 
-          // Extraer Imagen
           const picture = tags.picture;
           if (picture) {
             let base64String = "";
@@ -491,14 +485,12 @@
             asignarImagenThumb(index, base64);
           }
         },
-        onError: function() {
-          // Mantener icono musical por defecto
-        }
+        onError: function() {}
       });
     }
 
     /* ==========================================
-       ESCANEO DIRECTO DE ARCHIVOS DESDE /storage/emulated/0/MiMusica
+       ESCANEO DIRECTO DE ARCHIVOS
        ========================================== */
     async function cargarMusicaInicial() {
       if (typeof window.AndroidBridge !== 'undefined' && typeof window.AndroidBridge.cargarMusica === 'function') {
@@ -614,24 +606,22 @@
       playSong(proximaCancion);
     }
 
-    // Salto a la canción anterior siguiendo la secuencia A-Z
     function prevSongAZ() {
       if (todasLasCanciones.length === 0) return;
       if (indiceCancionActualAZ > 0) {
         indiceCancionActualAZ--;
       } else {
-        indiceCancionActualAZ = todasLasCanciones.length - 1; // Bucle al final
+        indiceCancionActualAZ = todasLasCanciones.length - 1;
       }
       playSong(todasLasCanciones[indiceCancionActualAZ]);
     }
 
-    // Salto a la siguiente canción siguiendo la secuencia A-Z
     function nextSongAZ() {
       if (todasLasCanciones.length === 0) return;
       if (indiceCancionActualAZ < todasLasCanciones.length - 1) {
         indiceCancionActualAZ++;
       } else {
-        indiceCancionActualAZ = 0; // Bucle al inicio
+        indiceCancionActualAZ = 0;
       }
       playSong(todasLasCanciones[indiceCancionActualAZ]);
     }
@@ -643,17 +633,25 @@
       if (!audioElement) return;
       if (audioElement.paused) {
         audioElement.play().then(() => {
-          actualizarIconoPlayPause(true);
+          actualizarEstadoPlayPause(true);
         }).catch(err => console.log(err));
       } else {
         audioElement.pause();
-        actualizarIconoPlayPause(false);
+        actualizarEstadoPlayPause(false);
       }
     }
 
-    function actualizarIconoPlayPause(estaSonando) {
+    function actualizarEstadoPlayPause(estaSonando) {
       if (btnPlayPause) {
-        btnPlayPause.innerText = estaSonando ? '❚❚' : '▶';
+        if (estaSonando) {
+          btnPlayPause.innerText = '❚❚';
+          btnPlayPause.classList.remove('is-paused');
+          btnPlayPause.classList.add('is-playing'); // Gris
+        } else {
+          btnPlayPause.innerText = '▶';
+          btnPlayPause.classList.remove('is-playing');
+          btnPlayPause.classList.add('is-paused'); // Naranja
+        }
       }
     }
 
@@ -786,10 +784,10 @@
         audioElement.load();
         
         audioElement.play().then(() => {
-          actualizarIconoPlayPause(true);
+          actualizarEstadoPlayPause(true);
         }).catch(error => {
           console.log("Error al reproducir audio:", error);
-          actualizarIconoPlayPause(false);
+          actualizarEstadoPlayPause(false);
         });
       }
     }
@@ -799,7 +797,7 @@
        ========================================== */
     if (audioElement) {
       audioElement.addEventListener('ended', () => {
-        nextSongAZ(); // Siguiente según secuencia A-Z
+        nextSongAZ();
       });
 
       audioElement.addEventListener('timeupdate', () => {
@@ -807,7 +805,6 @@
           seekBar.max = Math.floor(audioElement.duration);
           seekBar.value = Math.floor(audioElement.currentTime);
           
-          // Porcentaje recorrido para pintar la barra de naranja
           const porcentaje = (audioElement.currentTime / audioElement.duration) * 100;
           seekBar.style.background = `linear-gradient(to right, #FF8C00 0%, #FF8C00 ${porcentaje}%, #555555 ${porcentaje}%, #555555 100%)`;
 
