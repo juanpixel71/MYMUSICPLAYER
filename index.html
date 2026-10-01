@@ -207,9 +207,10 @@
       align-items: center; 
       justify-content: center; 
       cursor: pointer; 
+      font-weight: bold;
     }
 
-    /* ESTILO MODIFICADO PARA EL SHUFFLE GRANDE Y CENTRADO */
+    /* BOTÓN SHUFFLE GRANDE, NEGRITA Y CENTRADO */
     .btn-square.btn-square-main { 
       width: 110px !important; 
       height: 110px !important; 
@@ -217,7 +218,8 @@
       background-image: none !important;
       box-shadow: none !important;
       -webkit-appearance: none !important;
-      font-size: 5rem !important; 
+      font-size: 5.8rem !important; 
+      font-weight: 900 !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
@@ -242,7 +244,7 @@
           </div>
           <div class="track-details-drive">
             <h3 id="player-song-title">Canción</h3>
-            <p id="player-album-info">Álbum</p>
+            <p id="player-album-info">MiMusica</p>
           </div>
           <div class="progress-bar-container">
             <span id="current-time" class="time-stamp">0:00</span>
@@ -301,8 +303,20 @@
       const mapaCovers = coversRecibidas || {};
       
       if (Array.isArray(bibliotecaRecibida)) {
-        cancionesExtraidas.push(...bibliotecaRecibida);
+        // Formato array plano directo desde la carpeta raíz MiMusica
+        bibliotecaRecibida.forEach(item => {
+          if (typeof item === 'object' && item !== null) {
+            cancionesExtraidas.push(item);
+          } else {
+            cancionesExtraidas.push({
+              nombre: String(item),
+              archivo: String(item),
+              album: 'MiMusica'
+            });
+          }
+        });
       } else if (typeof bibliotecaRecibida === 'object' && bibliotecaRecibida !== null) {
+        // Formato estructurado o mapa de carpetas
         Object.keys(bibliotecaRecibida).forEach(album => {
           const lista = bibliotecaRecibida[album];
           if (Array.isArray(lista)) {
@@ -320,6 +334,8 @@
                 });
               }
             });
+          } else if (typeof lista === 'string' || typeof lista === 'object') {
+            cancionesExtraidas.push(lista);
           }
         });
       }
@@ -450,7 +466,7 @@
       }
 
       if (!nombre) nombre = 'Canción desconocida';
-      if (!album) album = 'Álbum desconocido';
+      if (!album) album = 'MiMusica';
 
       let rawAudioUrl = url;
 
@@ -468,7 +484,7 @@
       if (titleElem) titleElem.innerText = nombre;
       if (infoElem) infoElem.innerText = album;
 
-      // Cargar Carátula: intenta primero si la nativa envió algo, de lo contrario lee los TAGs ID3 del archivo
+      // Cargar Carátula: lee directamente los TAGs ID3 si no viene portada externa
       if (portadaRaw) {
         const playerCover = document.getElementById('player-cover');
         const playerCoverIcon = document.getElementById('player-cover-icon');
