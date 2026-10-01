@@ -103,7 +103,7 @@
     }
 
     /* ==========================================
-       3. PANTALLA PLAYLIST (AJUSTADA EXACTA A 8 FILAS CON ICONOS MÁS GRANDES)
+       3. PANTALLA PLAYLIST (AJUSTADA EXACTA A 7 FILAS CON CARÁTULA MÁS GRANDE)
        ========================================== */
     .playlist-container {
       flex: 1;
@@ -116,12 +116,12 @@
     .playlist-item {
       display: flex;
       align-items: center;
-      height: calc((100dvh - 180px) / 8); /* Cálculo exacto para encajar 8 filas */
-      min-height: 60px;
-      padding: 4px 6px;
+      height: calc((100dvh - 180px) / 7); /* Cálculo exacto para encajar 7 filas completas */
+      min-height: 70px;
+      padding: 6px 6px;
       border-bottom: 1px solid #4A4A49 !important;
       cursor: pointer;
-      gap: 14px;
+      gap: 16px;
       box-sizing: border-box;
       flex-shrink: 0;
     }
@@ -130,11 +130,11 @@
       background-color: #4A4A49;
     }
 
-    /* Icono más grande */
+    /* Carátula significativamente más grande (64px) */
     .playlist-thumb {
-      width: 54px;
-      height: 54px;
-      border-radius: 10px;
+      width: 64px;
+      height: 64px;
+      border-radius: 12px;
       background-color: #9D9D9C;
       background-size: cover;
       background-position: center;
@@ -143,7 +143,7 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      font-size: 1.6rem;
+      font-size: 1.8rem;
     }
 
     .playlist-info {
@@ -154,7 +154,7 @@
     }
 
     .playlist-title {
-      font-size: 1.05rem;
+      font-size: 1.1rem;
       font-weight: bold;
       color: #FFFFFF;
       white-space: nowrap;
@@ -163,9 +163,9 @@
     }
 
     .playlist-artist {
-      font-size: 0.88rem;
+      font-size: 0.92rem;
       color: #9D9D9C;
-      margin-top: 2px;
+      margin-top: 3px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -373,6 +373,26 @@
     const btnPlayPause = document.getElementById('btn-toggle-play');
 
     /* ==========================================
+       GESTIÓN DE CACHÉ EN LOCALSTORAGE
+       ========================================== */
+    function obtenerCacheMetadatos(key) {
+      try {
+        const cache = localStorage.getItem('meta_' + key);
+        return cache ? JSON.parse(cache) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function guardarCacheMetadatos(key, data) {
+      try {
+        localStorage.setItem('meta_' + key, JSON.stringify(data));
+      } catch (e) {
+        console.log("LocalStorage lleno o no disponible", e);
+      }
+    }
+
+    /* ==========================================
        CONTROL GENERAL Y NAVEGACIÓN
        ========================================== */
     function cambiarPantalla(idPantalla) {
@@ -399,9 +419,6 @@
       }
     }
 
-    /* ==========================================
-       NORMALIZADOR DE RUTA (MISMO MÉTODO QUE EL REPRODUCTOR)
-       ========================================== */
     function obtenerUrlFormateada(url) {
       if (!url) return '';
       if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) {
@@ -424,7 +441,7 @@
       if (!contenedor) return;
       contenedor.innerHTML = '';
 
-      // Ordenar alfabéticamente de la A a la Z
+      // Ordenar alfabéticamente A-Z
       todasLasCanciones.sort((a, b) => {
         const nombreA = (a.titulo || a.nombre || a.title || '').toLowerCase();
         const nombreB = (b.titulo || b.nombre || b.title || '').toLowerCase();
@@ -436,6 +453,15 @@
         item.className = 'playlist-item';
 
         const nombre = cancion.titulo || cancion.nombre || cancion.title || 'Canción desconocida';
+        const rawUrl = cancion.archivo || cancion.path || cancion.url || '';
+        
+        // Revisa caché local primero para carga instantánea
+        const cached = obtenerCacheMetadatos(rawUrl);
+        if (cached) {
+          if (cached.artista) cancion.artista = cached.artista;
+          if (cached.portada) cancion.portada = cached.portada;
+        }
+
         const artista = cancion.artista || cancion.artist || 'Artista desconocido';
 
         item.innerHTML = `
@@ -457,8 +483,7 @@
         if (cancion.portada) {
           asignarImagenThumb(index, cancion.portada);
         } else {
-          // Extraer carátula usando el mismo conversor de rutas funcional del reproductor
-          extraerMetadatosParaPlaylist(cancion, index);
+          extraerMetadatosParaPlaylist(cancion, index, rawUrl);
         }
       });
     }
@@ -475,23 +500,21 @@
       }
     }
 
-    function extraerMetadatosParaPlaylist(songObj, index) {
-      if (typeof jsmediatags === 'undefined' || !songObj) return;
+    function extraerMetadatosParaPlaylist(songObj, index, rawUrl) {
+      if (typeof jsmediatags === 'undefined' || !rawUrl) return;
 
-      let rawUrl = songObj.archivo || songObj.path || songObj.url || '';
-      if (!rawUrl) return;
-
-      // Normalización esencial de la URL
       let formattedUrl = obtenerUrlFormateada(rawUrl);
 
       jsmediatags.read(formattedUrl, {
         onSuccess: function(tag) {
           const tags = tag.tags || {};
+          let artExtraido = tags.artist || '';
+          let coverExtraida = '';
 
-          if (tags.artist) {
-            songObj.artista = tags.artist;
+          if (artExtraido) {
+            songObj.artista = artExtraido;
             const artistElem = document.getElementById(`artist-playlist-${index}`);
-            if (artistElem) artistElem.innerText = tags.artist;
+            if (artistElem) artistElem.innerText = artExtraido;
           }
 
           const picture = tags.picture;
@@ -500,32 +523,40 @@
             for (let i = 0; i < picture.data.length; i++) {
               base64String += String.fromCharCode(picture.data[i]);
             }
-            const base64 = "data:" + picture.format + ";base64," + window.btoa(base64String);
-            songObj.portada = base64;
-            asignarImagenThumb(index, base64);
+            coverExtraida = "data:" + picture.format + ";base64," + window.btoa(base64String);
+            songObj.portada = coverExtraida;
+            asignarImagenThumb(index, coverExtraida);
           }
+
+          // Guardar en localStorage para la próxima apertura instantánea
+          guardarCacheMetadatos(rawUrl, { artista: artExtraido, portada: coverExtraida });
         },
         onError: function() {
-          // Si falla con la URL convertida, reintenta una vez con la ruta raw
           if (formattedUrl !== rawUrl) {
             jsmediatags.read(rawUrl, {
               onSuccess: function(tag) {
                 const tags = tag.tags || {};
-                if (tags.artist) {
-                  songObj.artista = tags.artist;
+                let artExtraido = tags.artist || '';
+                let coverExtraida = '';
+
+                if (artExtraido) {
+                  songObj.artista = artExtraido;
                   const artistElem = document.getElementById(`artist-playlist-${index}`);
-                  if (artistElem) artistElem.innerText = tags.artist;
+                  if (artistElem) artistElem.innerText = artExtraido;
                 }
+
                 const picture = tags.picture;
                 if (picture) {
                   let base64String = "";
                   for (let i = 0; i < picture.data.length; i++) {
                     base64String += String.fromCharCode(picture.data[i]);
                   }
-                  const base64 = "data:" + picture.format + ";base64," + window.btoa(base64String);
-                  songObj.portada = base64;
-                  asignarImagenThumb(index, base64);
+                  coverExtraida = "data:" + picture.format + ";base64," + window.btoa(base64String);
+                  songObj.portada = coverExtraida;
+                  asignarImagenThumb(index, coverExtraida);
                 }
+
+                guardarCacheMetadatos(rawUrl, { artista: artExtraido, portada: coverExtraida });
               }
             });
           }
