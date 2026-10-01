@@ -44,10 +44,10 @@
       background-color: #FF8C00;
       color: #FFFFFF;
       padding: 16px;
-      padding-top: calc(20px + env(safe-area-inset-top, 20px));
+      padding-top: calc(18px + env(safe-area-inset-top, 18px));
       text-align: center;
       font-weight: bold;
-      font-size: 1.2rem;
+      font-size: 1.25rem;
       letter-spacing: 1px;
       text-transform: uppercase;
       box-shadow: 0 2px 5px rgba(0,0,0,0.3);
@@ -74,7 +74,7 @@
 
     .view-content {
       flex: 1;
-      padding: 15px;
+      padding: 10px 14px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -86,12 +86,12 @@
     .btn-nav-back {
       background-color: #FF8C00;
       color: #FFFFFF;
-      padding: 16px;
+      padding: 15px;
       text-align: center;
       font-weight: bold;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       cursor: pointer;
-      border-radius: 10px;
+      border-radius: 12px;
       margin-top: 0;
       text-decoration: none;
       text-transform: uppercase;
@@ -103,7 +103,7 @@
     }
 
     /* ==========================================
-       3. PANTALLA PLAYLIST (DISEÑO LIMPIO RESTAURADO)
+       3. PANTALLA PLAYLIST (AJUSTADA EXACTA A 8 FILAS CON ICONOS MÁS GRANDES)
        ========================================== */
     .playlist-container {
       flex: 1;
@@ -116,10 +116,13 @@
     .playlist-item {
       display: flex;
       align-items: center;
-      padding: 10px 5px;
+      height: calc((100dvh - 180px) / 8); /* Cálculo exacto para encajar 8 filas */
+      min-height: 60px;
+      padding: 4px 6px;
       border-bottom: 1px solid #4A4A49 !important;
       cursor: pointer;
-      gap: 15px;
+      gap: 14px;
+      box-sizing: border-box;
       flex-shrink: 0;
     }
 
@@ -127,18 +130,20 @@
       background-color: #4A4A49;
     }
 
+    /* Icono más grande */
     .playlist-thumb {
-      width: 50px;
-      height: 50px;
-      border-radius: 8px;
+      width: 54px;
+      height: 54px;
+      border-radius: 10px;
       background-color: #9D9D9C;
       background-size: cover;
       background-position: center;
+      background-repeat: no-repeat;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      font-size: 1.4rem;
+      font-size: 1.6rem;
     }
 
     .playlist-info {
@@ -158,7 +163,7 @@
     }
 
     .playlist-artist {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       color: #9D9D9C;
       margin-top: 2px;
       white-space: nowrap;
@@ -275,7 +280,6 @@
       font-weight: bold;
     }
 
-    /* BOTONES PRINCIPALES DEL MISMO TAMAÑO */
     .btn-square.btn-square-main { 
       width: 85px !important; 
       height: 85px !important; 
@@ -287,16 +291,14 @@
       font-size: 2.5rem;
     }
 
-    /* ESTADOS DE COLOR DE PLAY/PAUSE */
     .btn-square-main.is-playing {
-      background-color: #9D9D9C !important; /* Gris reproduciendo */
+      background-color: #9D9D9C !important;
     }
 
     .btn-square-main.is-paused {
-      background-color: #FF8C00 !important; /* Naranja en pausa */
+      background-color: #FF8C00 !important;
     }
 
-    /* SHUFFLE SIEMPRE NARANJA */
     .btn-square-main.btn-shuffle-orange {
       background-color: #FF8C00 !important;
     }
@@ -342,9 +344,7 @@
           </div>
           <div class="media-controls-square">
             <button class="btn-square" onclick="prevSongAZ()">⏮</button>
-            <!-- BOTÓN PLAY/PAUSE CONMUTABLE -->
             <button class="btn-square btn-square-main is-playing" id="btn-toggle-play" onclick="togglePlayPause()">❚❚</button>
-            <!-- BOTÓN SHUFFLE EN NARANJA -->
             <button class="btn-square btn-square-main btn-shuffle-orange" id="btn-shuffle" onclick="siguienteCancionAleatoria()">
               <svg class="shuffle-icon" viewBox="0 0 24 24">
                 <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.45 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
@@ -400,6 +400,23 @@
     }
 
     /* ==========================================
+       NORMALIZADOR DE RUTA (MISMO MÉTODO QUE EL REPRODUCTOR)
+       ========================================== */
+    function obtenerUrlFormateada(url) {
+      if (!url) return '';
+      if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) {
+        return url;
+      }
+      if (typeof Capacitor !== 'undefined' && typeof Capacitor.convertFileSrc === 'function') {
+        return Capacitor.convertFileSrc(url);
+      }
+      if (!url.startsWith('file://') && !url.startsWith('content://') && !url.startsWith('capacitor://')) {
+        return 'file://' + url;
+      }
+      return url;
+    }
+
+    /* ==========================================
        RENDERIZADO Y ORDENACIÓN A-Z DE LA PLAYLIST
        ========================================== */
     function renderizarPlaylist() {
@@ -440,8 +457,8 @@
         if (cancion.portada) {
           asignarImagenThumb(index, cancion.portada);
         } else {
-          // Extraer metadatos de fondo sin bloquear el hilo principal
-          setTimeout(() => extraerMetadatosParaPlaylist(cancion, index), 50 * index);
+          // Extraer carátula usando el mismo conversor de rutas funcional del reproductor
+          extraerMetadatosParaPlaylist(cancion, index);
         }
       });
     }
@@ -461,10 +478,13 @@
     function extraerMetadatosParaPlaylist(songObj, index) {
       if (typeof jsmediatags === 'undefined' || !songObj) return;
 
-      let urlAudio = songObj.archivo || songObj.path || songObj.url || '';
-      if (!urlAudio) return;
+      let rawUrl = songObj.archivo || songObj.path || songObj.url || '';
+      if (!rawUrl) return;
 
-      jsmediatags.read(urlAudio, {
+      // Normalización esencial de la URL
+      let formattedUrl = obtenerUrlFormateada(rawUrl);
+
+      jsmediatags.read(formattedUrl, {
         onSuccess: function(tag) {
           const tags = tag.tags || {};
 
@@ -485,7 +505,31 @@
             asignarImagenThumb(index, base64);
           }
         },
-        onError: function() {}
+        onError: function() {
+          // Si falla con la URL convertida, reintenta una vez con la ruta raw
+          if (formattedUrl !== rawUrl) {
+            jsmediatags.read(rawUrl, {
+              onSuccess: function(tag) {
+                const tags = tag.tags || {};
+                if (tags.artist) {
+                  songObj.artista = tags.artist;
+                  const artistElem = document.getElementById(`artist-playlist-${index}`);
+                  if (artistElem) artistElem.innerText = tags.artist;
+                }
+                const picture = tags.picture;
+                if (picture) {
+                  let base64String = "";
+                  for (let i = 0; i < picture.data.length; i++) {
+                    base64String += String.fromCharCode(picture.data[i]);
+                  }
+                  const base64 = "data:" + picture.format + ";base64," + window.btoa(base64String);
+                  songObj.portada = base64;
+                  asignarImagenThumb(index, base64);
+                }
+              }
+            });
+          }
+        }
       });
     }
 
@@ -646,11 +690,11 @@
         if (estaSonando) {
           btnPlayPause.innerText = '❚❚';
           btnPlayPause.classList.remove('is-paused');
-          btnPlayPause.classList.add('is-playing'); // Gris
+          btnPlayPause.classList.add('is-playing');
         } else {
           btnPlayPause.innerText = '▶';
           btnPlayPause.classList.remove('is-playing');
-          btnPlayPause.classList.add('is-paused'); // Naranja
+          btnPlayPause.classList.add('is-paused');
         }
       }
     }
@@ -742,14 +786,7 @@
       if (!nombre) nombre = 'Canción desconocida';
 
       let rawAudioUrl = url;
-
-      if (url && !url.startsWith('http') && !url.startsWith('blob:') && !url.startsWith('data:')) {
-        if (typeof Capacitor !== 'undefined' && typeof Capacitor.convertFileSrc === 'function') {
-          url = Capacitor.convertFileSrc(url);
-        } else if (!url.startsWith('file://') && !url.startsWith('content://') && !url.startsWith('capacitor://')) {
-          url = 'file://' + url;
-        }
-      }
+      url = obtenerUrlFormateada(url);
 
       const titleElem = document.getElementById('player-song-title');
       const artistElem = document.getElementById('player-artist-info');
