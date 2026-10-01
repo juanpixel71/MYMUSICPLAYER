@@ -245,8 +245,6 @@
           <div class="track-details-drive">
             <h3 id="player-song-title">Cargando canciones...</h3>
             <p id="player-artist-info">Artista desconocido</p>
-            <p id="player-filename-info" style="font-size: 0.85rem; color: #B0B0B0;"></p>
-            <p id="player-album-info" style="font-size: 0.85rem; color: #B0B0B0;"></p>
           </div>
           <div class="progress-bar-container">
             <span id="current-time" class="time-stamp">0:00</span>
@@ -437,11 +435,10 @@
     /* ==========================================
        REPRODUCCIÓN Y METADATOS ID3
        ========================================== */
-    function cargarMetadatosDesdeTag(urlAudio, artistaInicial, albumInicial) {
+    function cargarMetadatosDesdeTag(urlAudio, artistaInicial) {
       const playerCover = document.getElementById('player-cover');
       const playerCoverIcon = document.getElementById('player-cover-icon');
       const artistElem = document.getElementById('player-artist-info');
-      const albumElem = document.getElementById('player-album-info');
 
       if (typeof jsmediatags !== 'undefined' && urlAudio) {
         jsmediatags.read(urlAudio, {
@@ -453,13 +450,6 @@
               if (artistElem) artistElem.innerText = tags.artist;
             } else if (artistElem) {
               artistElem.innerText = artistaInicial || 'Artista desconocido';
-            }
-
-            // Extraer Álbum
-            if (tags.album) {
-              if (albumElem) albumElem.innerText = 'Álbum: ' + tags.album;
-            } else if (albumElem) {
-              albumElem.innerText = albumInicial ? 'Álbum: ' + albumInicial : 'Álbum: Desconocido';
             }
 
             // Extraer Carátula
@@ -480,15 +470,12 @@
           },
           onError: function(error) {
             console.log('No se pudieron leer metadatos, usando valores por defecto:', error);
-            // Si hay error en metadatos, no interrumpe la reproducción y asigna textos por defecto
             if (artistElem) artistElem.innerText = artistaInicial || 'Artista desconocido';
-            if (albumElem) albumElem.innerText = albumInicial ? 'Álbum: ' + albumInicial : 'Álbum: Desconocido';
             mostrarCoverPorDefecto();
           }
         });
       } else {
         if (artistElem) artistElem.innerText = artistaInicial || 'Artista desconocido';
-        if (albumElem) albumElem.innerText = albumInicial ? 'Álbum: ' + albumInicial : 'Álbum: Desconocido';
         mostrarCoverPorDefecto();
       }
     }
@@ -507,7 +494,6 @@
 
       let nombre = '';
       let artista = '';
-      let album = '';
       let url = '';
       let fileName = '';
       let portadaRaw = '';
@@ -515,7 +501,6 @@
       if (typeof song === 'object' && song !== null) {
         nombre = song.titulo || song.nombre || song.title || '';
         artista = song.artista || song.artist || 'Artista desconocido';
-        album = song.album || song.albumName || '';
         url = song.archivo || song.path || song.url || '';
         portadaRaw = song.portada || song.cover || song.art || song.imagen || song.caratula || song.albumArt || song.coverUri || '';
 
@@ -545,16 +530,12 @@
         }
       }
 
-      // Actualizar Título, Artista, Nombre de archivo y Álbum en el DOM
+      // Actualizar Título y Artista en el DOM
       const titleElem = document.getElementById('player-song-title');
       const artistElem = document.getElementById('player-artist-info');
-      const fileNameElem = document.getElementById('player-filename-info');
-      const albumElem = document.getElementById('player-album-info');
 
       if (titleElem) titleElem.innerText = nombre;
-      if (artistElem) artistElem.innerText = artista;
-      if (fileNameElem) fileNameElem.innerText = 'Archivo: ' + (fileName || nombre);
-      if (albumElem) albumElem.innerText = album ? 'Álbum: ' + album : 'Álbum: Desconocido';
+      if (artistElem) artistElem.innerText = artista || 'Artista desconocido';
 
       // Cargar Carátula desde los TAGs ID3 o metadata sin detener la reproducción
       if (portadaRaw) {
@@ -569,7 +550,7 @@
           playerCoverIcon.style.display = 'none';
         }
       } else {
-        cargarMetadatosDesdeTag(url || rawAudioUrl, artista, album);
+        cargarMetadatosDesdeTag(url || rawAudioUrl, artista);
       }
 
       // Reproducción asegurada del elemento de audio
