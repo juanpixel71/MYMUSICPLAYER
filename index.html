@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>MÚSICA PLAYER</title>
 
+  <!-- LIBRERÍA PARA LEER METADATOS Y CARÁTULAS DESDE EL ARCHIVO DE AUDIO -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+
   <style>
     /* ==========================================
        1. ESTILOS GLOBALES Y RESET
@@ -206,19 +209,22 @@
       cursor: pointer; 
     }
 
+    /* ESTILO MODIFICADO PARA EL SHUFFLE GRANDE Y CENTRADO */
     .btn-square.btn-square-main { 
-      width: 110px; 
-      height: 110px; 
+      width: 110px !important; 
+      height: 110px !important; 
       background-color: #FF8C00 !important; 
       background-image: none !important;
       box-shadow: none !important;
       -webkit-appearance: none !important;
-      font-size: 4rem; 
+      font-size: 5rem !important; 
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
+      text-align: center !important;
       line-height: 1 !important;
-      padding-bottom: 4px;
+      padding: 0 !important;
+      margin: 0 !important;
     }
   </style>
 </head>
@@ -375,29 +381,47 @@
     }
 
     /* ==========================================
-       REPRODUCCIÓN Y METADATOS (CARÁTULA, TÍTULO, ÁLBUM)
+       REPRODUCCIÓN Y LECTURA DIRECTA DE CARÁTULAS ID3
        ========================================== */
-    function procesarUrlImagen(imagenRaw) {
-      if (!imagenRaw) return '';
-      let urlImg = String(imagenRaw).trim();
+    function cargarCaratulaDesdeTag(urlAudio) {
+      const playerCover = document.getElementById('player-cover');
+      const playerCoverIcon = document.getElementById('player-cover-icon');
 
-      // Si viene en Base64 sin cabecera Data URL
-      if (!urlImg.startsWith('http') && !urlImg.startsWith('data:') && !urlImg.startsWith('file:') && !urlImg.startsWith('content:') && !urlImg.startsWith('capacitor:')) {
-        if (urlImg.length > 100) {
-          urlImg = 'data:image/jpeg;base64,' + urlImg;
-        }
+      if (typeof jsmediatags !== 'undefined' && urlAudio) {
+        jsmediatags.read(urlAudio, {
+          onSuccess: function(tag) {
+            const picture = tag.tags.picture;
+            if (picture) {
+              let base64String = "";
+              for (let i = 0; i < picture.data.length; i++) {
+                base64String += String.fromCharCode(picture.data[i]);
+              }
+              const base64 = "data:" + picture.format + ";base64," + window.btoa(base64String);
+              if (playerCover && playerCoverIcon) {
+                playerCover.style.backgroundImage = `url('${base64}')`;
+                playerCoverIcon.style.display = 'none';
+              }
+            } else {
+              mostrarCoverPorDefecto();
+            }
+          },
+          onError: function(error) {
+            console.log('Error leyendo ID3:', error);
+            mostrarCoverPorDefecto();
+          }
+        });
+      } else {
+        mostrarCoverPorDefecto();
       }
+    }
 
-      // Tratamiento de rutas nativas Android / Capacitor
-      if (urlImg && !urlImg.startsWith('http') && !urlImg.startsWith('data:')) {
-        if (typeof Capacitor !== 'undefined' && typeof Capacitor.convertFileSrc === 'function') {
-          urlImg = Capacitor.convertFileSrc(urlImg);
-        } else if (!urlImg.startsWith('file://') && !urlImg.startsWith('content://') && !urlImg.startsWith('capacitor://')) {
-          urlImg = 'file://' + urlImg;
-        }
+    function mostrarCoverPorDefecto() {
+      const playerCover = document.getElementById('player-cover');
+      const playerCoverIcon = document.getElementById('player-cover-icon');
+      if (playerCover && playerCoverIcon) {
+        playerCover.style.backgroundImage = 'none';
+        playerCoverIcon.style.display = 'block';
       }
-
-      return urlImg;
     }
 
     function playSong(song) {
@@ -428,6 +452,8 @@
       if (!nombre) nombre = 'Canción desconocida';
       if (!album) album = 'Álbum desconocido';
 
+      let rawAudioUrl = url;
+
       if (url && !url.startsWith('http') && !url.startsWith('blob:') && !url.startsWith('data:')) {
         if (typeof Capacitor !== 'undefined' && typeof Capacitor.convertFileSrc === 'function') {
           url = Capacitor.convertFileSrc(url);
@@ -436,28 +462,29 @@
         }
       }
 
-      // Actualizar UI - Título y Álbum
+      // Actualizar Título y Álbum
       const titleElem = document.getElementById('player-song-title');
       const infoElem = document.getElementById('player-album-info');
       if (titleElem) titleElem.innerText = nombre;
       if (infoElem) infoElem.innerText = album;
 
-      // Actualizar UI - Carátula procesada
-      const playerCover = document.getElementById('player-cover');
-      const playerCoverIcon = document.getElementById('player-cover-icon');
-      const portadaProcesada = procesarUrlImagen(portadaRaw);
-
-      if (playerCover && playerCoverIcon) {
-        if (portadaProcesada) {
-          playerCover.style.backgroundImage = `url('${portadaProcesada}')`;
-          playerCoverIcon.style.display = 'none';
-        } else {
-          playerCover.style.backgroundImage = 'none';
-          playerCoverIcon.style.display = 'block';
+      // Cargar Carátula: intenta primero si la nativa envió algo, de lo contrario lee los TAGs ID3 del archivo
+      if (portadaRaw) {
+        const playerCover = document.getElementById('player-cover');
+        const playerCoverIcon = document.getElementById('player-cover-icon');
+        let srcImg = portadaRaw;
+        if (srcImg.length > 100 && !srcImg.startsWith('data:') && !srcImg.startsWith('http') && !srcImg.startsWith('file:')) {
+          srcImg = 'data:image/jpeg;base64,' + srcImg;
         }
+        if (playerCover && playerCoverIcon) {
+          playerCover.style.backgroundImage = `url('${srcImg}')`;
+          playerCoverIcon.style.display = 'none';
+        }
+      } else {
+        cargarCaratulaDesdeTag(url || rawAudioUrl);
       }
 
-      // Reproducción de audio
+      // Reproducción
       if (audioElement) {
         audioElement.pause();
         audioElement.src = url;
