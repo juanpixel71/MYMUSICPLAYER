@@ -151,6 +151,7 @@
     .track-details-drive p { 
       font-size: 1rem; 
       color: #9D9D9C; 
+      margin-bottom: 2px;
     }
 
     .progress-bar-container { 
@@ -243,7 +244,9 @@
           </div>
           <div class="track-details-drive">
             <h3 id="player-song-title">Cargando canciones...</h3>
-            <p id="player-album-info">MiMusica</p>
+            <p id="player-artist-info">Artista desconocido</p>
+            <p id="player-filename-info" style="font-size: 0.85rem; color: #B0B0B0;"></p>
+            <p id="player-album-info" style="font-size: 0.85rem; color: #B0B0B0;"></p>
           </div>
           <div class="progress-bar-container">
             <span id="current-time" class="time-stamp">0:00</span>
@@ -434,14 +437,33 @@
     /* ==========================================
        REPRODUCCIÓN Y METADATOS ID3
        ========================================== */
-    function cargarCaratulaDesdeTag(urlAudio) {
+    function cargarMetadatosDesdeTag(urlAudio, artistaInicial, albumInicial) {
       const playerCover = document.getElementById('player-cover');
       const playerCoverIcon = document.getElementById('player-cover-icon');
+      const artistElem = document.getElementById('player-artist-info');
+      const albumElem = document.getElementById('player-album-info');
 
       if (typeof jsmediatags !== 'undefined' && urlAudio) {
         jsmediatags.read(urlAudio, {
           onSuccess: function(tag) {
-            const picture = tag.tags.picture;
+            const tags = tag.tags;
+
+            // Extraer Artista
+            if (tags.artist) {
+              if (artistElem) artistElem.innerText = tags.artist;
+            } else if (artistElem && artistaInicial) {
+              artistElem.innerText = artistaInicial;
+            }
+
+            // Extraer Álbum
+            if (tags.album) {
+              if (albumElem) albumElem.innerText = 'Álbum: ' + tags.album;
+            } else if (albumElem && albumInicial) {
+              albumElem.innerText = 'Álbum: ' + albumInicial;
+            }
+
+            // Extraer Carátula
+            const picture = tags.picture;
             if (picture) {
               let base64String = "";
               for (let i = 0; i < picture.data.length; i++) {
@@ -479,29 +501,34 @@
       if (!song) return;
 
       let nombre = '';
+      let artista = '';
       let album = '';
       let url = '';
+      let fileName = '';
       let portadaRaw = '';
 
       if (typeof song === 'object' && song !== null) {
         nombre = song.titulo || song.nombre || song.title || '';
+        artista = song.artista || song.artist || 'Artista desconocido';
         album = song.album || song.albumName || '';
         url = song.archivo || song.path || song.url || '';
         portadaRaw = song.portada || song.cover || song.art || song.imagen || song.caratula || song.albumArt || song.coverUri || '';
 
-        if (!nombre && url) {
-          const nombreLimpio = url.split('/').pop().split('\\').pop();
-          nombre = nombreLimpio.substring(0, nombreLimpio.lastIndexOf('.')) || nombreLimpio;
+        if (url) {
+          fileName = url.split('/').pop().split('\\').pop();
+          if (!nombre) {
+            nombre = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+          }
         }
       } else {
         const urlStr = String(song);
-        const nombreLimpio = urlStr.split('/').pop().split('\\').pop();
-        nombre = nombreLimpio.substring(0, nombreLimpio.lastIndexOf('.')) || nombreLimpio;
+        fileName = urlStr.split('/').pop().split('\\').pop();
+        nombre = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
         url = urlStr;
+        artista = 'Artista desconocido';
       }
 
       if (!nombre) nombre = 'Canción desconocida';
-      if (!album) album = 'MiMusica';
 
       let rawAudioUrl = url;
 
@@ -513,13 +540,18 @@
         }
       }
 
-      // Actualizar Título y Álbum
+      // Actualizar Título, Artista, Nombre de archivo y Álbum
       const titleElem = document.getElementById('player-song-title');
-      const infoElem = document.getElementById('player-album-info');
-      if (titleElem) titleElem.innerText = nombre;
-      if (infoElem) infoElem.innerText = album;
+      const artistElem = document.getElementById('player-artist-info');
+      const fileNameElem = document.getElementById('player-filename-info');
+      const albumElem = document.getElementById('player-album-info');
 
-      // Cargar Carátula desde los TAGs ID3
+      if (titleElem) titleElem.innerText = nombre;
+      if (artistElem) artistElem.innerText = artista;
+      if (fileNameElem) fileNameElem.innerText = 'Archivo: ' + (fileName || nombre);
+      if (albumElem) albumElem.innerText = album ? 'Álbum: ' + album : '';
+
+      // Cargar Carátula desde los TAGs ID3 o metadata
       if (portadaRaw) {
         const playerCover = document.getElementById('player-cover');
         const playerCoverIcon = document.getElementById('player-cover-icon');
@@ -532,7 +564,7 @@
           playerCoverIcon.style.display = 'none';
         }
       } else {
-        cargarCaratulaDesdeTag(url || rawAudioUrl);
+        cargarMetadatosDesdeTag(url || rawAudioUrl, artista, album);
       }
 
       // Reproducción
