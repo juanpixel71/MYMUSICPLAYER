@@ -103,7 +103,7 @@
     }
 
     /* ==========================================
-       3. PANTALLA PLAYLIST (7 FILAS CON CARÁTULA MÁS GRANDE)
+       3. PANTALLA PLAYLIST (7 FILAS CON CARÁTULAS MÁS GRANDES)
        ========================================== */
     .playlist-container {
       flex: 1;
@@ -118,10 +118,10 @@
       align-items: center;
       height: calc((100dvh - 180px) / 7);
       min-height: 70px;
-      padding: 6px 6px;
-      border-bottom: 1px solid #4A4A49 !important;
+      padding: 2px 4px; /* Padding vertical reducido al mínimo */
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
       cursor: pointer;
-      gap: 16px;
+      gap: 14px;
       box-sizing: border-box;
       flex-shrink: 0;
     }
@@ -131,9 +131,9 @@
     }
 
     .playlist-thumb {
-      width: 64px;
-      height: 64px;
-      border-radius: 12px;
+      width: 74px; /* Carátula más grande */
+      height: 74px; /* Carátula más grande */
+      border-radius: 10px;
       background-color: #9D9D9C;
       background-size: cover;
       background-position: center;
@@ -142,7 +142,7 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      font-size: 1.8rem;
+      font-size: 2.2rem;
     }
 
     .playlist-info {
@@ -153,7 +153,7 @@
     }
 
     .playlist-title {
-      font-size: 1.1rem;
+      font-size: 1.15rem;
       font-weight: bold;
       color: #FFFFFF;
       white-space: nowrap;
@@ -162,9 +162,9 @@
     }
 
     .playlist-artist {
-      font-size: 0.92rem;
+      font-size: 0.95rem;
       color: #9D9D9C;
-      margin-top: 3px;
+      margin-top: 2px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -366,6 +366,7 @@
     let todasLasCanciones = [];
     let colaAleatoria = [];
     let indiceCancionActualAZ = -1;
+    let modoAleatorioActivo = true; // Por defecto el shuffle naranja está activo
 
     const audioElement = document.getElementById('audio-element');
     const seekBar = document.getElementById('seek-bar');
@@ -894,8 +895,13 @@
        EVENTOS DE AUDIO Y BARRA DE PROGRESO
        ========================================== */
     if (audioElement) {
+      // CORRECCIÓN SHUFFLE AUTOMÁTICO AL TERMINAR CANCIÓN
       audioElement.addEventListener('ended', () => {
-        nextSongAZ();
+        if (modoAleatorioActivo) {
+          siguienteCancionAleatoria();
+        } else {
+          nextSongAZ();
+        }
       });
 
       audioElement.addEventListener('timeupdate', () => {
