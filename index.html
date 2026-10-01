@@ -100,72 +100,7 @@
     }
 
     /* ==========================================
-       3. MÚSICA (ÁLBUMES Y CANCIONES)
-       ========================================== */
-    .albums-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      width: 100%;
-      box-sizing: border-box;
-      overflow-y: auto;
-    }
-
-    .album-card-clean {
-      background-color: #9D9D9C;
-      color: #FFFFFF;
-      aspect-ratio: 1 / 1;
-      width: 100%;
-      min-width: 0;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 12px;
-      box-sizing: border-box;
-      cursor: pointer;
-      text-align: center;
-      font-size: 1.1rem;
-      font-weight: bold;
-      line-height: 1.35;
-      white-space: pre-line;
-      word-break: break-word;
-      background-size: cover;
-      background-position: center;
-    }
-
-    .song-list { 
-      display: flex; 
-      flex-direction: column; 
-      gap: 10px; 
-      overflow-y: auto; 
-      flex: 1;
-      min-height: 0;
-    }
-
-    .song-list .song-item {
-      flex: 1;
-      display: flex;
-      align-items: center;
-    }
-
-    .song-item { 
-      background-color: #9D9D9C; 
-      color: #FFFFFF; 
-      padding: 14px; 
-      border-radius: 8px; 
-      font-size: 0.95rem; 
-      font-weight: bold; 
-      cursor: pointer; 
-    }
-
-    .song-item.active-item,
-    .album-card-clean.active-item {
-      background-color: #FF8C00 !important;
-    }
-
-    /* ==========================================
-       4. REPRODUCTOR DE MÚSICA (SCREEN-PLAYER)
+       3. REPRODUCTOR DE MÚSICA (SCREEN-PLAYER)
        ========================================== */
     .player-view-drive {
       display: flex;
@@ -285,26 +220,8 @@
 
   <div class="app-container">
 
-    <!-- ÁLBUMES -->
-    <div id="screen-albums" class="screen active">
-      <div class="header">ÁLBUMES</div>
-      <div class="view-content">
-        <div id="albums-container" class="albums-grid"></div>
-        <button class="btn-nav-back" onclick="salirDeAplicacion()">&lt; SALIR DE LA APLICACIÓN</button>
-      </div>
-    </div>
-
-    <!-- CANCIONES -->
-    <div id="screen-songs" class="screen">
-      <div id="album-header" class="header">ÁLBUM</div>
-      <div class="view-content">
-        <div id="songs-container" class="song-list"></div>
-        <button class="btn-nav-back" onclick="navigateTo('screen-albums')">&lt; VOLVER ÁLBUMES</button>
-      </div>
-    </div>
-
     <!-- REPRODUCTOR -->
-    <div id="screen-player" class="screen">
+    <div id="screen-player" class="screen active">
       <div class="header">REPRODUCIENDO</div>
       <div class="view-content">
         <div class="player-view-drive">
@@ -322,12 +239,12 @@
           </div>
           <div class="media-controls-square">
             <button class="btn-square" onclick="prevSong()">⏮</button>
-            <button class="btn-square btn-square-main" id="btn-play-pause" onclick="togglePlayMusic()">▶</button>
+            <button class="btn-square btn-square-main" id="btn-play-pause" onclick="siguienteCancionAleatoria()">⇄</button>
             <button class="btn-square" onclick="nextSong()">⏭</button>
           </div>
           <audio id="audio-element"></audio>
         </div>
-        <button class="btn-nav-back" onclick="pararYVolverCanciones()">&lt; VOLVER A CANCIONES</button>
+        <button class="btn-nav-back" onclick="salirDeAplicacion()">&lt; SALIR DE LA APLICACIÓN</button>
       </div>
     </div>
 
@@ -337,11 +254,10 @@
     /* ==========================================
        VARIABLES GLOBALES Y ELEMENTOS DOM
        ========================================== */
-    let biblioteca = {};
-    let covers = {};
-    let albumActual = '';
-    let listaCancionesActual = [];
-    let indiceCancionActual = 0;
+    let todasLasCanciones = [];
+    let colaAleatoria = [];
+    let historialReproducción = [];
+    let indiceHistorial = -1;
 
     const audioElement = document.getElementById('audio-element');
     const seekBar = document.getElementById('seek-bar');
@@ -359,108 +275,132 @@
       }
     }
 
-    function navigateTo(screenId) {
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      const target = document.getElementById(screenId);
-      if (target) target.classList.add('active');
-    }
-
-    function marcarBotonActivo(elemento) {
-      if (!elemento) return;
-      const contenedor = elemento.closest('.albums-grid, .song-list');
-      if (contenedor) {
-        contenedor.querySelectorAll('.album-card-clean, .song-item').forEach(b => b.classList.remove('active-item'));
-      }
-      elemento.classList.add('active-item');
-    }
-
     /* ==========================================
-       MÚSICA Y BIBLIOTECA LOCAL / NATIVA
+       CARGA DE ARCHIVOS Y RECEPCIÓN NATIVA
        ========================================== */
-    function ejecutarAccionMusica() {
-      if (typeof window.AndroidBridge !== 'undefined' && typeof window.AndroidBridge.cargarMusica === 'function' && Object.keys(biblioteca).length === 0) {
+    function cargarMusicaInicial() {
+      if (typeof window.AndroidBridge !== 'undefined' && typeof window.AndroidBridge.cargarMusica === 'function') {
         window.AndroidBridge.cargarMusica();
-      } else {
-        renderAlbums();
-        navigateTo('screen-albums');
       }
     }
 
     window.recibirBibliotecaNativa = function(bibliotecaRecibida, coversRecibidas) {
-      biblioteca = bibliotecaRecibida || {};
-      covers = coversRecibidas || {};
-      renderAlbums();
-      navigateTo('screen-albums');
+      const cancionesExtraidas = [];
+      
+      if (Array.isArray(bibliotecaRecibida)) {
+        cancionesExtraidas.push(...bibliotecaRecibida);
+      } else if (typeof bibliotecaRecibida === 'object' && bibliotecaRecibida !== null) {
+        Object.keys(bibliotecaRecibida).forEach(album => {
+          const lista = bibliotecaRecibida[album];
+          if (Array.isArray(lista)) {
+            lista.forEach(item => {
+              if (typeof item === 'object' && item !== null) {
+                if (!item.album) item.album = album;
+                cancionesExtraidas.push(item);
+              } else {
+                cancionesExtraidas.push({
+                  nombre: String(item),
+                  archivo: String(item),
+                  album: album
+                });
+              }
+            });
+          }
+        });
+      }
+
+      if (cancionesExtraidas.length > 0) {
+        todasLasCanciones = cancionesExtraidas;
+        reiniciarColaAleatoria();
+        siguienteCancionAleatoria();
+      }
     };
 
-    function renderAlbums() {
-      const container = document.getElementById('albums-container');
-      if (!container) return;
-      container.innerHTML = '';
-      const nombresAlbumes = Object.keys(biblioteca).sort();
+    /* ==========================================
+       LÓGICA DE MODO ALEATORIO (SHUFFLE DOCK)
+       ========================================== */
+    function meclarArray(array) {
+      const copia = [...array];
+      for (let i = copia.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copia[i], copia[j]] = [copia[j], copia[i]];
+      }
+      return copia;
+    }
 
-      if (nombresAlbumes.length === 0) {
-        container.innerHTML = '<p style="grid-column: span 2; text-align:center; color:#9D9D9C; padding: 20px;">No se encontraron canciones en la carpeta MiMusica.</p>';
+    function reiniciarColaAleatoria() {
+      if (todasLasCanciones.length === 0) return;
+      colaAleatoria = meclarArray(todasLasCanciones);
+    }
+
+    function siguienteCancionAleatoria() {
+      if (todasLasCanciones.length === 0) return;
+
+      // Si nos encontramos en un punto intermedio del historial y pulsamos aleatorio / siguiente
+      if (indiceHistorial < historialReproducción.length - 1) {
+        indiceHistorial++;
+        playSong(historialReproducción[indiceHistorial]);
         return;
       }
 
-      nombresAlbumes.forEach(album => {
-        const card = document.createElement('div');
-        card.className = 'album-card-clean';
-        card.innerText = album.replace(/\s*\((.*?)\)\s*/g, "\n($1)\n");
-
-        const claveAlbum = album.toLowerCase();
-        if (covers[claveAlbum]) {
-          card.style.backgroundImage = `url('${covers[claveAlbum]}')`;
-          card.style.color = 'transparent';
-        }
-
-        card.onclick = () => {
-          marcarBotonActivo(card);
-          showSongs(album);
-        };
-        container.appendChild(card);
-      });
-    }
-
-    function showSongs(album) {
-      albumActual = album;
-      listaCancionesActual = biblioteca[album] || [];
-      const headerElem = document.getElementById('album-header');
-      if (headerElem) headerElem.innerText = album;
-      
-      const container = document.getElementById('songs-container');
-      if (!container) return;
-      container.innerHTML = '';
-
-      listaCancionesActual.forEach((song, idx) => {
-        const item = document.createElement('div');
-        item.className = 'song-item';
-        item.innerText = (typeof song === 'object' ? (song.nombre || song.file) : song) || 'Canción sin nombre';
-        item.onclick = () => {
-          marcarBotonActivo(item);
-          indiceCancionActual = idx;
-          playSong(song);
-        };
-        container.appendChild(item);
-      });
-
-      navigateTo('screen-songs');
-    }
-
-    function playSong(song) {
-      let nombre = '';
-      let url = '';
-
-      if (typeof song === 'object' && song !== null) {
-        nombre = song.nombre || song.title || 'Pista desconocida';
-        url = song.archivo || song.path || song.url || '';
-      } else {
-        nombre = String(song);
-        url = String(song);
+      // Si consumimos todas las canciones no repetidas, volvemos a mezclar automáticamente
+      if (colaAleatoria.length === 0) {
+        reiniciarColaAleatoria();
       }
 
-      if (url && !url.startsWith('http') && !url.startsWith('blob:')) {
+      const proximaCancion = colaAleatoria.shift();
+      historialReproducción.push(proximaCancion);
+      indiceHistorial = historialReproducción.length - 1;
+
+      playSong(proximaCancion);
+    }
+
+    function prevSong() {
+      if (historialReproducción.length === 0) return;
+      if (indiceHistorial > 0) {
+        indiceHistorial--;
+        playSong(historialReproducción[indiceHistorial]);
+      }
+    }
+
+    function nextSong() {
+      siguienteCancionAleatoria();
+    }
+
+    /* ==========================================
+       REPRODUCCIÓN Y METADATOS (CARÁTULA, TÍTULO, ÁLBUM)
+       ========================================== */
+    function playSong(song) {
+      if (!song) return;
+
+      let nombre = '';
+      let album = '';
+      let url = '';
+      let portadaUrl = '';
+
+      if (typeof song === 'object' && song !== null) {
+        nombre = song.titulo || song.nombre || song.title || '';
+        album = song.album || song.albumName || '';
+        url = song.archivo || song.path || song.url || '';
+        portadaUrl = song.portada || song.cover || song.art || song.imagen || '';
+
+        // Si no existe título en metadatos, extraemos del nombre del archivo sin extensión
+        if (!nombre && url) {
+          const nombreLimpio = url.split('/').pop().split('\\').pop();
+          nombre = nombreLimpio.substring(0, nombreLimpio.lastIndexOf('.')) || nombreLimpio;
+        }
+      } else {
+        const urlStr = String(song);
+        const nombreLimpio = urlStr.split('/').pop().split('\\').pop();
+        nombre = nombreLimpio.substring(0, nombreLimpio.lastIndexOf('.')) || nombreLimpio;
+        url = urlStr;
+      }
+
+      if (!nombre) nombre = 'Canción desconocida';
+      if (!album) album = 'Álbum desconocido';
+
+      // Tratamiento de rutas locales en Android / Capacitor / File URL
+      if (url && !url.startsWith('http') && !url.startsWith('blob:') && !url.startsWith('data:')) {
         if (typeof Capacitor !== 'undefined' && typeof Capacitor.convertFileSrc === 'function') {
           url = Capacitor.convertFileSrc(url);
         } else if (!url.startsWith('file://') && !url.startsWith('content://') && !url.startsWith('capacitor://')) {
@@ -468,83 +408,46 @@
         }
       }
 
+      // Actualizar UI - Título y Álbum desde los metadatos
       const titleElem = document.getElementById('player-song-title');
       const infoElem = document.getElementById('player-album-info');
       if (titleElem) titleElem.innerText = nombre;
-      if (infoElem) infoElem.innerText = albumActual;
+      if (infoElem) infoElem.innerText = album;
 
+      // Actualizar UI - Carátula/Imagen de metadatos
       const playerCover = document.getElementById('player-cover');
       const playerCoverIcon = document.getElementById('player-cover-icon');
-      const claveAlbum = albumActual.toLowerCase();
 
       if (playerCover && playerCoverIcon) {
-        if (covers[claveAlbum]) {
-          playerCover.style.backgroundImage = `url('${covers[claveAlbum]}')`;
+        if (portadaUrl) {
+          playerCover.style.backgroundImage = `url('${portadaUrl}')`;
           playerCoverIcon.style.display = 'none';
         } else {
           playerCover.style.backgroundImage = 'none';
           playerCoverIcon.style.display = 'block';
         }
       }
-      
+
+      // Reproducción de audio
       if (audioElement) {
         audioElement.pause();
         audioElement.src = url;
         audioElement.load();
         
-        audioElement.play().then(() => {
-          const btnPlay = document.getElementById('btn-play-pause');
-          if (btnPlay) btnPlay.innerText = '⏸';
-        }).catch(error => {
+        audioElement.play().catch(error => {
           console.log("Error al reproducir audio:", error);
-          const btnPlay = document.getElementById('btn-play-pause');
-          if (btnPlay) btnPlay.innerText = '▶';
         });
       }
-
-      navigateTo('screen-player');
     }
 
-    function togglePlayMusic() {
-      if (!audioElement) return;
-      const btnPlay = document.getElementById('btn-play-pause');
-      if (audioElement.paused) {
-        audioElement.play().then(() => {
-          if (btnPlay) btnPlay.innerText = '⏸';
-        }).catch(e => console.log("Error al reanudar:", e));
-      } else {
-        audioElement.pause();
-        if (btnPlay) btnPlay.innerText = '▶';
-      }
-    }
-
-    function detenerMusica() {
-      if (!audioElement) return;
-      audioElement.pause();
-      audioElement.currentTime = 0;
-      const btnPlay = document.getElementById('btn-play-pause');
-      if (btnPlay) btnPlay.innerText = '▶';
-    }
-
-    function pararYVolverCanciones() {
-      detenerMusica();
-      navigateTo('screen-songs');
-    }
-
-    function prevSong() {
-      if (listaCancionesActual.length === 0) return;
-      indiceCancionActual = (indiceCancionActual - 1 + listaCancionesActual.length) % listaCancionesActual.length;
-      playSong(listaCancionesActual[indiceCancionActual]);
-    }
-
-    function nextSong() {
-      if (listaCancionesActual.length === 0) return;
-      indiceCancionActual = (indiceCancionActual + 1) % listaCancionesActual.length;
-      playSong(listaCancionesActual[indiceCancionActual]);
-    }
-
+    /* ==========================================
+       EVENTOS DE AUDIO Y BARRA DE PROGRESO
+       ========================================== */
     if (audioElement) {
-      audioElement.addEventListener('ended', nextSong);
+      audioElement.addEventListener('ended', () => {
+        siguienteCancionAleatoria();
+      });
+
       audioElement.addEventListener('timeupdate', () => {
         if (!isNaN(audioElement.duration) && seekBar) {
           seekBar.max = Math.floor(audioElement.duration);
@@ -570,9 +473,8 @@
       return `${min}:${sec < 10 ? '0' : ''}${sec}`;
     }
 
-    /* Inicialización automática al arrancar la app en ÁLBUMES */
     document.addEventListener('DOMContentLoaded', () => {
-      ejecutarAccionMusica();
+      cargarMusicaInicial();
     });
   </script>
 </body>
