@@ -103,7 +103,7 @@
     }
 
     /* ==========================================
-       3. PANTALLA PLAYLIST (AJUSTADA EXACTA A 7 FILAS CON CARÁTULA MÁS GRANDE)
+       3. PANTALLA PLAYLIST (7 FILAS CON CARÁTULA MÁS GRANDE)
        ========================================== */
     .playlist-container {
       flex: 1;
@@ -116,7 +116,7 @@
     .playlist-item {
       display: flex;
       align-items: center;
-      height: calc((100dvh - 180px) / 7); /* Cálculo exacto para encajar 7 filas completas */
+      height: calc((100dvh - 180px) / 7);
       min-height: 70px;
       padding: 6px 6px;
       border-bottom: 1px solid #4A4A49 !important;
@@ -130,7 +130,6 @@
       background-color: #4A4A49;
     }
 
-    /* Carátula significativamente más grande (64px) */
     .playlist-thumb {
       width: 64px;
       height: 64px;
@@ -373,22 +372,50 @@
     const btnPlayPause = document.getElementById('btn-toggle-play');
 
     /* ==========================================
-       GESTIÓN DE CACHÉ EN LOCALSTORAGE
+       GESTIÓN DE BASE DE DATOS INDEXEDDB (SIN LÍMITE DE TAMAÑO)
        ========================================== */
-    function obtenerCacheMetadatos(key) {
-      try {
-        const cache = localStorage.getItem('meta_' + key);
-        return cache ? JSON.parse(cache) : null;
-      } catch (e) {
-        return null;
-      }
+    let db = null;
+
+    function abrirDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open("MusicaPlayerDB", 1);
+        request.onupgradeneeded = (e) => {
+          db = e.target.result;
+          if (!db.objectStoreNames.contains("metadatos")) {
+            db.createObjectStore("metadatos", { keyPath: "path" });
+          }
+        };
+        request.onsuccess = (e) => {
+          db = e.target.result;
+          resolve(db);
+        };
+        request.onerror = (e) => reject(e);
+      });
     }
 
-    function guardarCacheMetadatos(key, data) {
+    async function obtenerMetaIndexedDB(path) {
+      if (!db) await abrirDB();
+      return new Promise((resolve) => {
+        try {
+          const tx = db.transaction("metadatos", "readonly");
+          const store = tx.objectStore("metadatos");
+          const req = store.get(path);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => resolve(null);
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    }
+
+    async function guardarMetaIndexedDB(path, artista, portada) {
+      if (!db) await abrirDB();
       try {
-        localStorage.setItem('meta_' + key, JSON.stringify(data));
+        const tx = db.transaction("metadatos", "readwrite");
+        const store = tx.objectStore("metadatos");
+        store.put({ path: path, artista: artista, portada: portada });
       } catch (e) {
-        console.log("LocalStorage lleno o no disponible", e);
+        console.log("Error al guardar metadatos en IndexedDB", e);
       }
     }
 
@@ -434,9 +461,9 @@
     }
 
     /* ==========================================
-       RENDERIZADO Y ORDENACIÓN A-Z DE LA PLAYLIST
+       RENDERIZADO INSTANTÁNEO A-Z
        ========================================== */
-    function renderizarPlaylist() {
+    async function renderizarPlaylist() {
       const contenedor = document.getElementById('playlist-list');
       if (!contenedor) return;
       contenedor.innerHTML = '';
@@ -448,15 +475,16 @@
         return nombreA.localeCompare(nombreB);
       });
 
-      todasLasCanciones.forEach((cancion, index) => {
+      for (let index = 0; index < todasLasCanciones.length; index++) {
+        const cancion = todasLasCanciones[index];
         const item = document.createElement('div');
         item.className = 'playlist-item';
 
         const nombre = cancion.titulo || cancion.nombre || cancion.title || 'Canción desconocida';
         const rawUrl = cancion.archivo || cancion.path || cancion.url || '';
         
-        // Revisa caché local primero para carga instantánea
-        const cached = obtenerCacheMetadatos(rawUrl);
+        // Consulta rápida a IndexedDB
+        const cached = await obtenerMetaIndexedDB(rawUrl);
         if (cached) {
           if (cached.artista) cancion.artista = cached.artista;
           if (cached.portada) cancion.portada = cached.portada;
@@ -485,7 +513,7 @@
         } else {
           extraerMetadatosParaPlaylist(cancion, index, rawUrl);
         }
-      });
+      }
     }
 
     function asignarImagenThumb(index, fuenteImg) {
@@ -528,8 +556,8 @@
             asignarImagenThumb(index, coverExtraida);
           }
 
-          // Guardar en localStorage para la próxima apertura instantánea
-          guardarCacheMetadatos(rawUrl, { artista: artExtraido, portada: coverExtraida });
+          // Guardar metadatos en IndexedDB
+          guardarMetaIndexedDB(rawUrl, artExtraido, coverExtraida);
         },
         onError: function() {
           if (formattedUrl !== rawUrl) {
@@ -556,7 +584,7 @@
                   asignarImagenThumb(index, coverExtraida);
                 }
 
-                guardarCacheMetadatos(rawUrl, { artista: artExtraido, portada: coverExtraida });
+                guardarMetaIndexedDB(rawUrl, artExtraido, coverExtraida);
               }
             });
           }
@@ -568,12 +596,10 @@
        ESCANEO DIRECTO DE ARCHIVOS
        ========================================== */
     async function cargarMusicaInicial() {
-      // Si Android ya dispone de la biblioteca nativa, usamos esa fuente.
-      // No hacemos además un escaneo paralelo de Filesystem porque podría
-      // renderizar primero canciones sin portada y pisar la biblioteca nativa.
+      await abrirDB();
+
       if (typeof window.AndroidBridge !== 'undefined' && typeof window.AndroidBridge.cargarMusica === 'function') {
         window.AndroidBridge.cargarMusica();
-        return;
       }
       
       if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.Filesystem) {
@@ -600,7 +626,7 @@
             if (archivosEncontrados.length > 0) {
               todasLasCanciones = archivosEncontrados;
               reiniciarColaAleatoria();
-              renderizarPlaylist();
+              await renderizarPlaylist();
               return;
             }
           }
@@ -610,7 +636,7 @@
       }
     }
 
-    window.recibirBibliotecaNativa = function(bibliotecaRecibida, coversRecibidas) {
+    window.recibirBibliotecaNativa = async function(bibliotecaRecibida, coversRecibidas) {
       const cancionesExtraidas = [];
       const mapaCovers = coversRecibidas || {};
       
@@ -651,7 +677,7 @@
       if (cancionesExtraidas.length > 0) {
         todasLasCanciones = cancionesExtraidas;
         reiniciarColaAleatoria();
-        renderizarPlaylist();
+        await renderizarPlaylist();
       }
     };
 
