@@ -210,23 +210,22 @@
       font-weight: bold;
     }
 
-    /* BOTÓN SHUFFLE GRANDE, NEGRITA Y CENTRADO */
+    /* BOTÓN SHUFFLE CON ICONO SVG INTEGRADO */
     .btn-square.btn-square-main { 
       width: 110px !important; 
       height: 110px !important; 
       background-color: #FF8C00 !important; 
-      background-image: none !important;
-      box-shadow: none !important;
-      -webkit-appearance: none !important;
-      font-size: 5.8rem !important; 
-      font-weight: 900 !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
-      text-align: center !important;
-      line-height: 1 !important;
       padding: 0 !important;
       margin: 0 !important;
+    }
+
+    .shuffle-icon {
+      width: 60px;
+      height: 60px;
+      fill: #FFFFFF;
     }
   </style>
 </head>
@@ -243,7 +242,7 @@
             <span id="player-cover-icon" style="font-size: 5rem; color: #FFF;">🎵</span>
           </div>
           <div class="track-details-drive">
-            <h3 id="player-song-title">Canción</h3>
+            <h3 id="player-song-title">Cargando canciones...</h3>
             <p id="player-album-info">MiMusica</p>
           </div>
           <div class="progress-bar-container">
@@ -253,7 +252,12 @@
           </div>
           <div class="media-controls-square">
             <button class="btn-square" onclick="prevSong()">⏮</button>
-            <button class="btn-square btn-square-main" id="btn-play-pause" onclick="siguienteCancionAleatoria()">⇄</button>
+            <button class="btn-square btn-square-main" id="btn-play-pause" onclick="siguienteCancionAleatoria()">
+              <!-- ICONO VECTORIAL SHUFFLE NEGRITA -->
+              <svg class="shuffle-icon" viewBox="0 0 24 24">
+                <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.45 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
+              </svg>
+            </button>
             <button class="btn-square" onclick="nextSong()">⏭</button>
           </div>
           <audio id="audio-element"></audio>
@@ -290,11 +294,46 @@
     }
 
     /* ==========================================
-       CARGA DE ARCHIVOS Y RECEPCIÓN NATIVA
+       ESCANEO DIRECTO DE ARCHIVOS DESDE /storage/emulated/0/MiMusica
        ========================================== */
-    function cargarMusicaInicial() {
+    async function cargarMusicaInicial() {
+      // 1. Intentar llamar al puente Android
       if (typeof window.AndroidBridge !== 'undefined' && typeof window.AndroidBridge.cargarMusica === 'function') {
         window.AndroidBridge.cargarMusica();
+      }
+      
+      // 2. Escáner directo con Capacitor Filesystem si está disponible
+      if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.Filesystem) {
+        try {
+          const result = await Capacitor.Plugins.Filesystem.readdir({
+            path: 'MiMusica',
+            directory: 'EXTERNAL_STORAGE'
+          });
+
+          if (result && result.files && result.files.length > 0) {
+            const archivosEncontrados = [];
+            result.files.forEach(file => {
+              const nombreArchivo = typeof file === 'string' ? file : file.name;
+              if (nombreArchivo.toLowerCase().endsWith('.mp3') || nombreArchivo.toLowerCase().endsWith('.m4a') || nombreArchivo.toLowerCase().endsWith('.wav')) {
+                const rutaCompleta = '/storage/emulated/0/MiMusica/' + nombreArchivo;
+                archivosEncontrados.push({
+                  nombre: nombreArchivo.replace(/\.[^/.]+$/, ""),
+                  archivo: rutaCompleta,
+                  album: 'MiMusica'
+                });
+              }
+            });
+
+            if (archivosEncontrados.length > 0) {
+              todasLasCanciones = archivosEncontrados;
+              reiniciarColaAleatoria();
+              siguienteCancionAleatoria();
+              return;
+            }
+          }
+        } catch (e) {
+          console.log("Error al leer directorio directamente:", e);
+        }
       }
     }
 
@@ -303,20 +342,18 @@
       const mapaCovers = coversRecibidas || {};
       
       if (Array.isArray(bibliotecaRecibida)) {
-        // Formato array plano directo desde la carpeta raíz MiMusica
         bibliotecaRecibida.forEach(item => {
           if (typeof item === 'object' && item !== null) {
             cancionesExtraidas.push(item);
           } else {
             cancionesExtraidas.push({
               nombre: String(item),
-              archivo: String(item),
+              archivo: String(item).startsWith('/') ? String(item) : '/storage/emulated/0/MiMusica/' + String(item),
               album: 'MiMusica'
             });
           }
         });
       } else if (typeof bibliotecaRecibida === 'object' && bibliotecaRecibida !== null) {
-        // Formato estructurado o mapa de carpetas
         Object.keys(bibliotecaRecibida).forEach(album => {
           const lista = bibliotecaRecibida[album];
           if (Array.isArray(lista)) {
@@ -328,14 +365,12 @@
                 const claveAlbum = album.toLowerCase();
                 cancionesExtraidas.push({
                   nombre: String(item),
-                  archivo: String(item),
+                  archivo: String(item).startsWith('/') ? String(item) : '/storage/emulated/0/MiMusica/' + String(item),
                   album: album,
                   portada: mapaCovers[claveAlbum] || ''
                 });
               }
             });
-          } else if (typeof lista === 'string' || typeof lista === 'object') {
-            cancionesExtraidas.push(lista);
           }
         });
       }
@@ -348,7 +383,7 @@
     };
 
     /* ==========================================
-       LÓGICA DE MODO ALEATORIO (SHUFFLE DOCK)
+       LÓGICA DE MODO ALEATORIO (SHUFFLE)
        ========================================== */
     function meclarArray(array) {
       const copia = [...array];
@@ -397,7 +432,7 @@
     }
 
     /* ==========================================
-       REPRODUCCIÓN Y LECTURA DIRECTA DE CARÁTULAS ID3
+       REPRODUCCIÓN Y METADATOS ID3
        ========================================== */
     function cargarCaratulaDesdeTag(urlAudio) {
       const playerCover = document.getElementById('player-cover');
@@ -484,7 +519,7 @@
       if (titleElem) titleElem.innerText = nombre;
       if (infoElem) infoElem.innerText = album;
 
-      // Cargar Carátula: lee directamente los TAGs ID3 si no viene portada externa
+      // Cargar Carátula desde los TAGs ID3
       if (portadaRaw) {
         const playerCover = document.getElementById('player-cover');
         const playerCoverIcon = document.getElementById('player-cover-icon');
