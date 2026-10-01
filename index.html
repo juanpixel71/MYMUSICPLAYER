@@ -103,7 +103,69 @@
     }
 
     /* ==========================================
-       3. REPRODUCTOR DE MÚSICA (SCREEN-PLAYER)
+       3. PANTALLA PLAYLIST (ESQUEMA SOLICITADO)
+       ========================================== */
+    .playlist-container {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .playlist-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 5px;
+      border-bottom: 1px solid #4A4A49 !important;
+      cursor: pointer;
+      gap: 15px;
+    }
+
+    .playlist-item:active {
+      background-color: #4A4A49;
+    }
+
+    .playlist-thumb {
+      width: 55px;
+      height: 55px;
+      border-radius: 8px;
+      background-color: #9D9D9C;
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 1.5rem;
+    }
+
+    .playlist-info {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .playlist-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #FFFFFF;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .playlist-artist {
+      font-size: 0.95rem;
+      color: #9D9D9C;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ==========================================
+       4. REPRODUCTOR DE MÚSICA (SCREEN-PLAYER)
        ========================================== */
     .player-view-drive {
       display: flex;
@@ -191,19 +253,19 @@
       display: flex; 
       align-items: center; 
       justify-content: center; 
-      gap: 20px; 
+      gap: 12px; 
       width: 100%; 
       margin-top: 0;
       margin-bottom: 0;
     }
 
     .btn-square { 
-      width: 95px; 
-      height: 95px; 
+      width: 75px; 
+      height: 75px; 
       border-radius: 16px; 
       background-color: #9D9D9C; 
       color: #FFFFFF; 
-      font-size: 2.8rem; 
+      font-size: 2.2rem; 
       display: flex; 
       align-items: center; 
       justify-content: center; 
@@ -211,21 +273,22 @@
       font-weight: bold;
     }
 
-    /* BOTÓN SHUFFLE CON ICONO SVG INTEGRADO */
+    /* BOTONES DESTACADOS: PLAY/PAUSE Y SHUFFLE DEL MISMO TAMAÑO */
     .btn-square.btn-square-main { 
-      width: 110px !important; 
-      height: 110px !important; 
+      width: 85px !important; 
+      height: 85px !important; 
       background-color: #FF8C00 !important; 
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
       padding: 0 !important;
       margin: 0 !important;
+      font-size: 2.5rem;
     }
 
     .shuffle-icon {
-      width: 60px;
-      height: 60px;
+      width: 45px;
+      height: 45px;
       fill: #FFFFFF;
     }
   </style>
@@ -234,8 +297,19 @@
 
   <div class="app-container">
 
-    <!-- REPRODUCTOR -->
-    <div id="screen-player" class="screen active">
+    <!-- PANTALLA 1: PLAYLIST -->
+    <div id="screen-playlist" class="screen active">
+      <div class="header">PLAYLIST</div>
+      <div class="view-content">
+        <div class="playlist-container" id="playlist-list">
+          <!-- Las canciones cargadas A-Z se renderizan aquí -->
+        </div>
+        <button class="btn-nav-back" onclick="salirDeAplicacion()">&lt; SALIR DE LA APLICACIÓN</button>
+      </div>
+    </div>
+
+    <!-- PANTALLA 2: REPRODUCTOR -->
+    <div id="screen-player" class="screen">
       <div class="header">REPRODUCIENDO</div>
       <div class="view-content">
         <div class="player-view-drive">
@@ -253,8 +327,10 @@
           </div>
           <div class="media-controls-square">
             <button class="btn-square" onclick="prevSong()">⏮</button>
-            <button class="btn-square btn-square-main" id="btn-play-pause" onclick="siguienteCancionAleatoria()">
-              <!-- ICONO VECTORIAL SHUFFLE NEGRITA -->
+            <!-- BOTÓN PLAY/PAUSE -->
+            <button class="btn-square btn-square-main" id="btn-toggle-play" onclick="togglePlayPause()">❚❚</button>
+            <!-- BOTÓN SHUFFLE DEL MISMO TAMAÑO -->
+            <button class="btn-square btn-square-main" id="btn-shuffle" onclick="siguienteCancionAleatoria()">
               <svg class="shuffle-icon" viewBox="0 0 24 24">
                 <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.45 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
               </svg>
@@ -263,7 +339,7 @@
           </div>
           <audio id="audio-element"></audio>
         </div>
-        <button class="btn-nav-back" onclick="salirDeAplicacion()">&lt; SALIR DE LA APLICACIÓN</button>
+        <button class="btn-nav-back" onclick="volverAPlaylist()">&lt; VOLVER A PLAYLIST</button>
       </div>
     </div>
 
@@ -280,10 +356,26 @@
 
     const audioElement = document.getElementById('audio-element');
     const seekBar = document.getElementById('seek-bar');
+    const btnPlayPause = document.getElementById('btn-toggle-play');
 
     /* ==========================================
        CONTROL GENERAL Y NAVEGACIÓN
        ========================================== */
+    function cambiarPantalla(idPantalla) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      const pantallaObj = document.getElementById(idPantalla);
+      if (pantallaObj) pantallaObj.classList.add('active');
+    }
+
+    function volverAPlaylist() {
+      // Detener música al volver a la playlist
+      if (audioElement) {
+        audioElement.pause();
+      }
+      actualizarIconoPlayPause(false);
+      cambiarPantalla('screen-playlist');
+    }
+
     function salirDeAplicacion() {
       if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.App) {
         Capacitor.Plugins.App.exitApp();
@@ -295,15 +387,65 @@
     }
 
     /* ==========================================
+       RENDERIZADO Y ORDENACIÓN A-Z DE LA PLAYLIST
+       ========================================== */
+    function renderizarPlaylist() {
+      const contenedor = document.getElementById('playlist-list');
+      if (!contenedor) return;
+      contenedor.innerHTML = '';
+
+      // Ordenar alfabéticamente de la A a la Z
+      todasLasCanciones.sort((a, b) => {
+        const nombreA = (a.titulo || a.nombre || a.title || '').toLowerCase();
+        const nombreB = (b.titulo || b.nombre || b.title || '').toLowerCase();
+        return nombreA.localeCompare(nombreB);
+      });
+
+      todasLasCanciones.forEach((cancion, index) => {
+        const item = document.createElement('div');
+        item.className = 'playlist-item';
+
+        const nombre = cancion.titulo || cancion.nombre || cancion.title || 'Canción desconocida';
+        const artista = cancion.artista || cancion.artist || 'Artista desconocido';
+
+        item.innerHTML = `
+          <div class="playlist-thumb" id="thumb-${index}">🎵</div>
+          <div class="playlist-info">
+            <div class="playlist-title">${nombre}</div>
+            <div class="playlist-artist">${artista}</div>
+          </div>
+        `;
+
+        item.onclick = () => {
+          playSong(cancion);
+          cambiarPantalla('screen-player');
+        };
+
+        contenedor.appendChild(item);
+
+        // Si tiene miniatura o se puede extraer metadata
+        if (cancion.portada) {
+          const thumbElem = document.getElementById(`thumb-${index}`);
+          if (thumbElem) {
+            let srcImg = cancion.portada;
+            if (srcImg.length > 100 && !srcImg.startsWith('data:') && !srcImg.startsWith('http') && !srcImg.startsWith('file:')) {
+              srcImg = 'data:image/jpeg;base64,' + srcImg;
+            }
+            thumbElem.style.backgroundImage = `url('${srcImg}')`;
+            thumbElem.innerText = '';
+          }
+        }
+      });
+    }
+
+    /* ==========================================
        ESCANEO DIRECTO DE ARCHIVOS DESDE /storage/emulated/0/MiMusica
        ========================================== */
     async function cargarMusicaInicial() {
-      // 1. Intentar llamar al puente Android
       if (typeof window.AndroidBridge !== 'undefined' && typeof window.AndroidBridge.cargarMusica === 'function') {
         window.AndroidBridge.cargarMusica();
       }
       
-      // 2. Escáner directo con Capacitor Filesystem si está disponible
       if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.Filesystem) {
         try {
           const result = await Capacitor.Plugins.Filesystem.readdir({
@@ -328,7 +470,7 @@
             if (archivosEncontrados.length > 0) {
               todasLasCanciones = archivosEncontrados;
               reiniciarColaAleatoria();
-              siguienteCancionAleatoria();
+              renderizarPlaylist();
               return;
             }
           }
@@ -379,7 +521,7 @@
       if (cancionesExtraidas.length > 0) {
         todasLasCanciones = cancionesExtraidas;
         reiniciarColaAleatoria();
-        siguienteCancionAleatoria();
+        renderizarPlaylist();
       }
     };
 
@@ -433,6 +575,27 @@
     }
 
     /* ==========================================
+       CONTROLES DE REPRODUCCIÓN (PLAY / PAUSE)
+       ========================================== */
+    function togglePlayPause() {
+      if (!audioElement) return;
+      if (audioElement.paused) {
+        audioElement.play().then(() => {
+          actualizarIconoPlayPause(true);
+        }).catch(err => console.log(err));
+      } else {
+        audioElement.pause();
+        actualizarIconoPlayPause(false);
+      }
+    }
+
+    function actualizarIconoPlayPause(estaSonando) {
+      if (btnPlayPause) {
+        btnPlayPause.innerText = estaSonando ? '❚❚' : '▶';
+      }
+    }
+
+    /* ==========================================
        REPRODUCCIÓN Y METADATOS ID3
        ========================================== */
     function cargarMetadatosDesdeTag(urlAudio, artistaInicial, songObj) {
@@ -445,15 +608,13 @@
           onSuccess: function(tag) {
             const tags = tag.tags || {};
 
-            // Extraer y guardar Artista
             if (tags.artist) {
               if (artistElem) artistElem.innerText = tags.artist;
-              if (songObj) songObj.artista = tags.artist; // Guardar en caché para próximas veces
+              if (songObj) songObj.artista = tags.artist;
             } else if (artistElem && !artistElem.innerText) {
               artistElem.innerText = artistaInicial || 'Artista desconocido';
             }
 
-            // Extraer Carátula
             const picture = tags.picture;
             if (picture) {
               let base64String = "";
@@ -470,7 +631,6 @@
             }
           },
           onError: function(error) {
-            console.log('No se pudieron leer metadatos, usando valores por defecto:', error);
             if (artistElem && !artistElem.innerText) artistElem.innerText = artistaInicial || 'Artista desconocido';
             mostrarCoverPorDefecto();
           }
@@ -531,22 +691,15 @@
         }
       }
 
-      // Actualizar Título y Artista en el DOM inmediatamente si se conoce
       const titleElem = document.getElementById('player-song-title');
       const artistElem = document.getElementById('player-artist-info');
 
       if (titleElem) titleElem.innerText = nombre;
       
-      // Si ya tenemos guardado el artista, se muestra al instante sin colocar temporalmente "Artista desconocido"
       if (artistElem) {
-        if (artista) {
-          artistElem.innerText = artista;
-        } else {
-          artistElem.innerText = ''; // Limpia el elemento temporalmente para que no parpadee un texto incorrecto
-        }
+        artistElem.innerText = artista ? artista : '';
       }
 
-      // Cargar Carátula desde los TAGs ID3 o metadata sin detener la reproducción
       if (portadaRaw) {
         const playerCover = document.getElementById('player-cover');
         const playerCoverIcon = document.getElementById('player-cover-icon');
@@ -565,14 +718,16 @@
         cargarMetadatosDesdeTag(url || rawAudioUrl, artista, typeof song === 'object' ? song : null);
       }
 
-      // Reproducción asegurada del elemento de audio
       if (audioElement) {
         audioElement.pause();
         audioElement.src = url;
         audioElement.load();
         
-        audioElement.play().catch(error => {
+        audioElement.play().then(() => {
+          actualizarIconoPlayPause(true);
+        }).catch(error => {
           console.log("Error al reproducir audio:", error);
+          actualizarIconoPlayPause(false);
         });
       }
     }
