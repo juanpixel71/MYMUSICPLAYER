@@ -244,7 +244,7 @@
           </div>
           <div class="track-details-drive">
             <h3 id="player-song-title">Cargando canciones...</h3>
-            <p id="player-artist-info">Artista desconocido</p>
+            <p id="player-artist-info"></p>
           </div>
           <div class="progress-bar-container">
             <span id="current-time" class="time-stamp">0:00</span>
@@ -435,7 +435,7 @@
     /* ==========================================
        REPRODUCCIÓN Y METADATOS ID3
        ========================================== */
-    function cargarMetadatosDesdeTag(urlAudio, artistaInicial) {
+    function cargarMetadatosDesdeTag(urlAudio, artistaInicial, songObj) {
       const playerCover = document.getElementById('player-cover');
       const playerCoverIcon = document.getElementById('player-cover-icon');
       const artistElem = document.getElementById('player-artist-info');
@@ -445,10 +445,11 @@
           onSuccess: function(tag) {
             const tags = tag.tags || {};
 
-            // Extraer Artista
+            // Extraer y guardar Artista
             if (tags.artist) {
               if (artistElem) artistElem.innerText = tags.artist;
-            } else if (artistElem) {
+              if (songObj) songObj.artista = tags.artist; // Guardar en caché para próximas veces
+            } else if (artistElem && !artistElem.innerText) {
               artistElem.innerText = artistaInicial || 'Artista desconocido';
             }
 
@@ -470,12 +471,12 @@
           },
           onError: function(error) {
             console.log('No se pudieron leer metadatos, usando valores por defecto:', error);
-            if (artistElem) artistElem.innerText = artistaInicial || 'Artista desconocido';
+            if (artistElem && !artistElem.innerText) artistElem.innerText = artistaInicial || 'Artista desconocido';
             mostrarCoverPorDefecto();
           }
         });
       } else {
-        if (artistElem) artistElem.innerText = artistaInicial || 'Artista desconocido';
+        if (artistElem && !artistElem.innerText) artistElem.innerText = artistaInicial || 'Artista desconocido';
         mostrarCoverPorDefecto();
       }
     }
@@ -500,7 +501,7 @@
 
       if (typeof song === 'object' && song !== null) {
         nombre = song.titulo || song.nombre || song.title || '';
-        artista = song.artista || song.artist || 'Artista desconocido';
+        artista = song.artista || song.artist || '';
         url = song.archivo || song.path || song.url || '';
         portadaRaw = song.portada || song.cover || song.art || song.imagen || song.caratula || song.albumArt || song.coverUri || '';
 
@@ -515,7 +516,7 @@
         fileName = urlStr.split('/').pop().split('\\').pop();
         nombre = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
         url = urlStr;
-        artista = 'Artista desconocido';
+        artista = '';
       }
 
       if (!nombre) nombre = 'Canción desconocida';
@@ -530,12 +531,20 @@
         }
       }
 
-      // Actualizar Título y Artista en el DOM
+      // Actualizar Título y Artista en el DOM inmediatamente si se conoce
       const titleElem = document.getElementById('player-song-title');
       const artistElem = document.getElementById('player-artist-info');
 
       if (titleElem) titleElem.innerText = nombre;
-      if (artistElem) artistElem.innerText = artista || 'Artista desconocido';
+      
+      // Si ya tenemos guardado el artista, se muestra al instante sin colocar temporalmente "Artista desconocido"
+      if (artistElem) {
+        if (artista) {
+          artistElem.innerText = artista;
+        } else {
+          artistElem.innerText = ''; // Limpia el elemento temporalmente para que no parpadee un texto incorrecto
+        }
+      }
 
       // Cargar Carátula desde los TAGs ID3 o metadata sin detener la reproducción
       if (portadaRaw) {
@@ -549,8 +558,11 @@
           playerCover.style.backgroundImage = `url('${srcImg}')`;
           playerCoverIcon.style.display = 'none';
         }
+        if (!artista && artistElem) {
+          artistElem.innerText = 'Artista desconocido';
+        }
       } else {
-        cargarMetadatosDesdeTag(url || rawAudioUrl, artista);
+        cargarMetadatosDesdeTag(url || rawAudioUrl, artista, typeof song === 'object' ? song : null);
       }
 
       // Reproducción asegurada del elemento de audio
