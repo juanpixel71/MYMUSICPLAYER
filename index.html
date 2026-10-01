@@ -568,8 +568,12 @@
        ESCANEO DIRECTO DE ARCHIVOS
        ========================================== */
     async function cargarMusicaInicial() {
+      // Si Android ya dispone de la biblioteca nativa, usamos esa fuente.
+      // No hacemos además un escaneo paralelo de Filesystem porque podría
+      // renderizar primero canciones sin portada y pisar la biblioteca nativa.
       if (typeof window.AndroidBridge !== 'undefined' && typeof window.AndroidBridge.cargarMusica === 'function') {
         window.AndroidBridge.cargarMusica();
+        return;
       }
       
       if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.Filesystem) {
@@ -613,15 +617,6 @@
       if (Array.isArray(bibliotecaRecibida)) {
         bibliotecaRecibida.forEach(item => {
           if (typeof item === 'object' && item !== null) {
-            // Mantener la carátula que ya venga en el objeto.
-            // Si no viene, usar la carátula nativa asociada a su álbum.
-            if (!item.album) item.album = 'MiMusica';
-            if (!item.portada) {
-              const claveAlbum = String(item.album || '').toLowerCase();
-              if (mapaCovers[claveAlbum]) {
-                item.portada = mapaCovers[claveAlbum];
-              }
-            }
             cancionesExtraidas.push(item);
           } else {
             cancionesExtraidas.push({
@@ -638,12 +633,6 @@
             lista.forEach(item => {
               if (typeof item === 'object' && item !== null) {
                 if (!item.album) item.album = album;
-                if (!item.portada) {
-                  const claveAlbum = String(item.album || album).toLowerCase();
-                  if (mapaCovers[claveAlbum]) {
-                    item.portada = mapaCovers[claveAlbum];
-                  }
-                }
                 cancionesExtraidas.push(item);
               } else {
                 const claveAlbum = album.toLowerCase();
