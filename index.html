@@ -129,7 +129,7 @@
     }
 
     /* ==========================================
-       3. PANTALLA PLAYLIST (7 FILAS CON CARÁTULAS MÁS GRANDES)
+       3. PANTALLA PLAYLIST
        ========================================== */
     .playlist-container {
       flex: 1;
@@ -144,7 +144,7 @@
       align-items: center;
       height: calc((100dvh - 180px) / 7);
       min-height: 70px;
-      padding: 2px 4px; /* Padding vertical reducido al mínimo */
+      padding: 2px 4px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
       cursor: pointer;
       gap: 14px;
@@ -157,8 +157,8 @@
     }
 
     .playlist-thumb {
-      width: 74px; /* Carátula más grande */
-      height: 74px; /* Carátula más grande */
+      width: 74px;
+      height: 74px;
       border-radius: 10px;
       background-color: #9D9D9C;
       background-size: cover;
@@ -196,8 +196,16 @@
       text-overflow: ellipsis;
     }
 
+    .empty-state {
+      text-align: center;
+      color: #9D9D9C;
+      margin-top: 40px;
+      font-size: 1.1rem;
+      padding: 0 20px;
+    }
+
     /* ==========================================
-       4. REPRODUCTOR DE MÚSICA (SCREEN-PLAYER)
+       4. REPRODUCTOR DE MÚSICA
        ========================================== */
     .player-view-drive {
       display: flex;
@@ -225,8 +233,6 @@
       background-position: center;
       background-repeat: no-repeat;
       flex-shrink: 0;
-      margin-top: 0;
-      margin-bottom: 0;
     }
 
     .track-details-drive { 
@@ -287,8 +293,6 @@
       justify-content: center; 
       gap: 12px; 
       width: 100%; 
-      margin-top: 0;
-      margin-bottom: 0;
     }
 
     .btn-square { 
@@ -356,7 +360,7 @@
       </div>
       <div class="view-content">
         <div class="playlist-container" id="playlist-list">
-          <!-- Las canciones cargadas se renderizan aquí -->
+          <div class="empty-state">Buscando archivos de audio...</div>
         </div>
         <button class="btn-nav-back" onclick="salirDeAplicacion()">&lt; SALIR DE LA APLICACIÓN</button>
       </div>
@@ -371,7 +375,7 @@
             <span id="player-cover-icon" style="font-size: 5rem; color: #FFF;">🎵</span>
           </div>
           <div class="track-details-drive">
-            <h3 id="player-song-title">Cargando canciones...</h3>
+            <h3 id="player-song-title">Selecciona una canción</h3>
             <p id="player-artist-info"></p>
           </div>
           <div class="progress-bar-container">
@@ -398,13 +402,10 @@
   </div>
 
   <script>
-    /* ==========================================
-       VARIABLES GLOBALES Y ELEMENTOS DOM
-       ========================================== */
     let todasLasCanciones = [];
     let colaAleatoria = [];
     let indiceCancionActualAZ = -1;
-    let modoAleatorioActivo = false; // Comienza apagado (gris) por defecto
+    let modoAleatorioActivo = false;
 
     const audioElement = document.getElementById('audio-element');
     const seekBar = document.getElementById('seek-bar');
@@ -412,7 +413,7 @@
     const btnShuffle = document.getElementById('btn-shuffle');
 
     /* ==========================================
-       GESTIÓN DE BASE DE DATOS INDEXEDDB (SIN LÍMITE DE TAMAÑO)
+       GESTIÓN DE BASE DE DATOS INDEXEDDB
        ========================================== */
     let db = null;
 
@@ -477,12 +478,18 @@
     }
 
     function salirDeAplicacion() {
-      if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.App) {
-        Capacitor.Plugins.App.exitApp();
-      } else if (navigator.app && navigator.app.exitApp) {
-        navigator.app.exitApp();
-      } else {
-        window.close();
+      try {
+        if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.salir) {
+          window.AndroidBridge.salir();
+        } else if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.App) {
+          Capacitor.Plugins.App.exitApp();
+        } else if (window.navigator && window.navigator.app && window.navigator.app.exitApp) {
+          window.navigator.app.exitApp();
+        } else {
+          window.close();
+        }
+      } catch (e) {
+        console.log("Error al salir de la aplicación:", e);
       }
     }
 
@@ -534,6 +541,11 @@
       if (!contenedor) return;
       contenedor.innerHTML = '';
 
+      if (todasLasCanciones.length === 0) {
+        contenedor.innerHTML = '<div class="empty-state">No se encontraron archivos de música en el dispositivo.</div>';
+        return;
+      }
+
       for (let index = 0; index < todasLasCanciones.length; index++) {
         const cancion = todasLasCanciones[index];
         const item = document.createElement('div');
@@ -542,7 +554,6 @@
         const nombre = cancion.titulo || cancion.nombre || cancion.title || 'Canción desconocida';
         const rawUrl = cancion.archivo || cancion.path || cancion.url || '';
         
-        // Consulta rápida a IndexedDB
         const cached = await obtenerMetaIndexedDB(rawUrl);
         if (cached) {
           if (cached.artista) cancion.artista = cached.artista;
@@ -615,7 +626,6 @@
             asignarImagenThumb(index, coverExtraida);
           }
 
-          // Guardar metadatos en IndexedDB
           guardarMetaIndexedDB(rawUrl, artExtraido, coverExtraida);
         },
         onError: function() {
@@ -652,15 +662,29 @@
     }
 
     /* ==========================================
-       ESCANEO DIRECTO DE ARCHIVOS
+       ESCANEO Y PERMISOS DE ALMACENAMIENTO
        ========================================== */
-    async function cargarMusicaInicial() {
+    async function solicitarPermisosYEscanear() {
       await abrirDB();
 
+      // Solicitud de permisos en Capacitor si está presente
+      if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.Filesystem) {
+        try {
+          if (Capacitor.Plugins.Filesystem.requestPermissions) {
+            await Capacitor.Plugins.Filesystem.requestPermissions();
+          }
+        } catch (err) {
+          console.log("Error al pedir permisos:", err);
+        }
+      }
+
+      // 1. Método nativo Android Bridge
       if (typeof window.AndroidBridge !== 'undefined' && typeof window.AndroidBridge.cargarMusica === 'function') {
         window.AndroidBridge.cargarMusica();
+        return;
       }
       
+      // 2. Método Capacitor Filesystem
       if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.Filesystem) {
         try {
           const result = await Capacitor.Plugins.Filesystem.readdir({
@@ -674,3 +698,181 @@
               const nombreArchivo = typeof file === 'string' ? file : file.name;
               if (nombreArchivo.toLowerCase().endsWith('.mp3') || nombreArchivo.toLowerCase().endsWith('.m4a') || nombreArchivo.toLowerCase().endsWith('.wav')) {
                 const rutaCompleta = '/storage/emulated/0/MiMusica/' + nombreArchivo;
+                archivosEncontrados.push({
+                  nombre: nombreArchivo.replace(/\.[^/.]+$/, ""),
+                  archivo: rutaCompleta,
+                  album: 'MiMusica'
+                });
+              }
+            });
+
+            if (archivosEncontrados.length > 0) {
+              todasLasCanciones = archivosEncontrados;
+              ordenarAZ();
+              return;
+            }
+          }
+        } catch (e) {
+          console.log("Error al leer directorio directamente:", e);
+        }
+      }
+
+      // 3. Fallback de pruebas si no se cargan archivos
+      renderizarPlaylist();
+    }
+
+    window.recibirBibliotecaNativa = async function(bibliotecaRecibida, coversRecibidas) {
+      const cancionesExtraidas = [];
+      const mapaCovers = coversRecibidas || {};
+      
+      if (Array.isArray(bibliotecaRecibida)) {
+        bibliotecaRecibida.forEach(item => {
+          if (typeof item === 'object' && item !== null) {
+            cancionesExtraidas.push(item);
+          } else {
+            cancionesExtraidas.push({
+              nombre: String(item),
+              archivo: String(item).startsWith('/') ? String(item) : '/storage/emulated/0/MiMusica/' + String(item),
+              album: 'MiMusica'
+            });
+          }
+        });
+      } else if (typeof bibliotecaRecibida === 'object' && bibliotecaRecibida !== null) {
+        Object.keys(bibliotecaRecibida).forEach(album => {
+          const lista = bibliotecaRecibida[album];
+          if (Array.isArray(lista)) {
+            lista.forEach(item => {
+              if (typeof item === 'object' && item !== null) {
+                if (!item.album) item.album = album;
+                cancionesExtraidas.push(item);
+              } else {
+                const claveAlbum = album.toLowerCase();
+                cancionesExtraidas.push({
+                  nombre: String(item),
+                  archivo: String(item).startsWith('/') ? String(item) : '/storage/emulated/0/MiMusica/' + String(item),
+                  album: album,
+                  portada: mapaCovers[claveAlbum] || ''
+                });
+              }
+            });
+          }
+        });
+      }
+
+      if (cancionesExtraidas.length > 0) {
+        todasLasCanciones = cancionesExtraidas;
+        ordenarAZ();
+      } else {
+        renderizarPlaylist();
+      }
+    };
+
+    /* ==========================================
+       NAVEGACIÓN DE CANCIONES Y SHUFFLE
+       ========================================== */
+    function meclarArray(array) {
+      const copia = [...array];
+      for (let i = copia.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copia[i], copia[j]] = [copia[j], copia[i]];
+      }
+      return copia;
+    }
+
+    function reiniciarColaAleatoria() {
+      if (todasLasCanciones.length === 0) return;
+      colaAleatoria = meclarArray(todasLasCanciones);
+    }
+
+    function toggleModoAleatorio() {
+      modoAleatorioActivo = !modoAleatorioActivo;
+      if (btnShuffle) {
+        if (modoAleatorioActivo) {
+          btnShuffle.classList.remove('btn-shuffle-inactive');
+          btnShuffle.classList.add('btn-shuffle-active');
+        } else {
+          btnShuffle.classList.remove('btn-shuffle-active');
+          btnShuffle.classList.add('btn-shuffle-inactive');
+        }
+      }
+    }
+
+    function siguienteCancionAleatoria() {
+      if (todasLasCanciones.length === 0) return;
+
+      if (colaAleatoria.length === 0) {
+        reiniciarColaAleatoria();
+      }
+
+      const proximaCancion = colaAleatoria.shift();
+      indiceCancionActualAZ = todasLasCanciones.indexOf(proximaCancion);
+
+      playSong(proximaCancion);
+    }
+
+    function prevSongAZ() {
+      if (todasLasCanciones.length === 0) return;
+      
+      if (modoAleatorioActivo) {
+        siguienteCancionAleatoria();
+        return;
+      }
+
+      if (indiceCancionActualAZ > 0) {
+        indiceCancionActualAZ--;
+      } else {
+        indiceCancionActualAZ = todasLasCanciones.length - 1;
+      }
+      playSong(todasLasCanciones[indiceCancionActualAZ]);
+    }
+
+    function nextSongAZ() {
+      if (todasLasCanciones.length === 0) return;
+
+      if (modoAleatorioActivo) {
+        siguienteCancionAleatoria();
+        return;
+      }
+
+      if (indiceCancionActualAZ < todasLasCanciones.length - 1) {
+        indiceCancionActualAZ++;
+      } else {
+        indiceCancionActualAZ = 0;
+      }
+      playSong(todasLasCanciones[indiceCancionActualAZ]);
+    }
+
+    /* ==========================================
+       CONTROLES DE REPRODUCCIÓN (PLAY / PAUSE)
+       ========================================== */
+    function togglePlayPause() {
+      if (!audioElement) return;
+      if (audioElement.paused) {
+        audioElement.play().then(() => {
+          actualizarEstadoPlayPause(true);
+        }).catch(err => console.log(err));
+      } else {
+        audioElement.pause();
+        actualizarEstadoPlayPause(false);
+      }
+    }
+
+    function actualizarEstadoPlayPause(estaSonando) {
+      if (btnPlayPause) {
+        if (estaSonando) {
+          btnPlayPause.innerText = '❚❚';
+          btnPlayPause.classList.remove('is-paused');
+          btnPlayPause.classList.add('is-playing');
+        } else {
+          btnPlayPause.innerText = '▶';
+          btnPlayPause.classList.remove('is-playing');
+          btnPlayPause.classList.add('is-paused');
+        }
+      }
+    }
+
+    /* ==========================================
+       REPRODUCCIÓN Y METADATOS
+       ========================================== */
+    function cargarMetadatosDesdeTag(urlAudio, artistaInicial, songObj) {
+      const playerCover = document.getElementById('player
