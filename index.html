@@ -43,7 +43,7 @@
     .header {
       background-color: #FF8C00;
       color: #FFFFFF;
-      padding: 16px;
+      padding: 16px 10px;
       padding-top: calc(18px + env(safe-area-inset-top, 18px));
       text-align: center;
       font-weight: bold;
@@ -55,25 +55,33 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 4px;
     }
 
-    .header-separator {
+    /* ESTILOS DE LA BARRA HEADER CON 4 RAYAS VERTICALES */
+    .header-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
       color: #FFFFFF;
+      font-size: 1.2rem;
       font-weight: bold;
-      font-size: 1.25rem;
+    }
+
+    .header-nav .sep {
+      margin: 0 10px;
+      opacity: 0.9;
     }
 
     .header-btn {
-      background-color: transparent;
+      background: transparent;
       color: #FFFFFF;
       font-weight: bold;
-      font-size: 1.05rem;
+      font-size: 1.15rem;
       cursor: pointer;
+      padding: 4px 6px;
       text-transform: uppercase;
       letter-spacing: 1px;
-      padding: 4px 8px;
-      border-radius: 6px;
     }
 
     .header-btn:active {
@@ -324,12 +332,13 @@
       background-color: #FF8C00 !important;
     }
 
-    .btn-square-main.btn-shuffle-orange {
-      background-color: #FF8C00 !important;
+    /* ESTADOS DEL BOTÓN ALEATORIO (APAGADO GRIS / ACTIVADO NARANJA) */
+    .btn-square-main.btn-shuffle-off {
+      background-color: #9D9D9C !important;
     }
 
-    .btn-square-main.btn-shuffle-inactive {
-      background-color: #9D9D9C !important;
+    .btn-square-main.btn-shuffle-orange {
+      background-color: #FF8C00 !important;
     }
 
     .shuffle-icon {
@@ -342,395 +351,3 @@
 <body>
 
   <div class="app-container">
-
-    <!-- PANTALLA 1: PLAYLIST -->
-    <div id="screen-playlist" class="screen active">
-      <div class="header">
-        <span class="header-separator">|</span>
-        <button class="header-btn" onclick="ordenarAZ()">A-Z</button>
-        <span class="header-separator">|</span>
-        <button class="header-btn" onclick="ordenarPorAutor()">AUTOR</button>
-        <span class="header-separator">|</span>
-        <button class="header-btn" onclick="ordenarRandom()">RANDOM</button>
-        <span class="header-separator">|</span>
-      </div>
-      <div class="view-content">
-        <div class="playlist-container" id="playlist-list">
-          <!-- Las canciones cargadas A-Z se renderizan aquí -->
-        </div>
-        <button class="btn-nav-back" onclick="salirDeAplicacion()">&lt; SALIR DE LA APLICACIÓN</button>
-      </div>
-    </div>
-
-    <!-- PANTALLA 2: REPRODUCTOR -->
-    <div id="screen-player" class="screen">
-      <div class="header">REPRODUCIENDO</div>
-      <div class="view-content">
-        <div class="player-view-drive">
-          <div class="album-cover-drive" id="player-cover">
-            <span id="player-cover-icon" style="font-size: 5rem; color: #FFF;">🎵</span>
-          </div>
-          <div class="track-details-drive">
-            <h3 id="player-song-title">Cargando canciones...</h3>
-            <p id="player-artist-info"></p>
-          </div>
-          <div class="progress-bar-container">
-            <span id="current-time" class="time-stamp">0:00</span>
-            <input type="range" id="seek-bar" class="progress-bar" value="0" min="0" step="1">
-            <span id="total-time" class="time-stamp" style="text-align: right;">0:00</span>
-          </div>
-          <div class="media-controls-square">
-            <button class="btn-square" onclick="prevSongAZ()">⏮</button>
-            <button class="btn-square btn-square-main is-playing" id="btn-toggle-play" onclick="togglePlayPause()">❚❚</button>
-            <button class="btn-square btn-square-main btn-shuffle-orange" id="btn-shuffle" onclick="toggleModoAleatorio()">
-              <svg class="shuffle-icon" viewBox="0 0 24 24">
-                <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.45 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
-              </svg>
-            </button>
-            <button class="btn-square" onclick="nextSongAZ()">⏭</button>
-          </div>
-          <audio id="audio-element"></audio>
-        </div>
-        <button class="btn-nav-back" onclick="volverAPlaylist()">&lt; VOLVER A PLAYLIST</button>
-      </div>
-    </div>
-
-  </div>
-
-  <script>
-    /* ==========================================
-       VARIABLES GLOBALES Y ELEMENTOS DOM
-       ========================================== */
-    let todasLasCanciones = [];
-    let colaAleatoria = [];
-    let indiceCancionActualAZ = -1;
-    let modoAleatorioActivo = true; // Por defecto el shuffle naranja está activo
-
-    const audioElement = document.getElementById('audio-element');
-    const seekBar = document.getElementById('seek-bar');
-    const btnPlayPause = document.getElementById('btn-toggle-play');
-    const btnShuffle = document.getElementById('btn-shuffle');
-
-    /* ==========================================
-       GESTIÓN DE BASE DE DATOS INDEXEDDB (SIN LÍMITE DE TAMAÑO)
-       ========================================== */
-    let db = null;
-
-    function abrirDB() {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open("MusicaPlayerDB", 1);
-        request.onupgradeneeded = (e) => {
-          db = e.target.result;
-          if (!db.objectStoreNames.contains("metadatos")) {
-            db.createObjectStore("metadatos", { keyPath: "path" });
-          }
-        };
-        request.onsuccess = (e) => {
-          db = e.target.result;
-          resolve(db);
-        };
-        request.onerror = (e) => reject(e);
-      });
-    }
-
-    async function obtenerMetaIndexedDB(path) {
-      if (!db) await abrirDB();
-      return new Promise((resolve) => {
-        try {
-          const tx = db.transaction("metadatos", "readonly");
-          const store = tx.objectStore("metadatos");
-          const req = store.get(path);
-          req.onsuccess = () => resolve(req.result || null);
-          req.onerror = () => resolve(null);
-        } catch (e) {
-          resolve(null);
-        }
-      });
-    }
-
-    async function guardarMetaIndexedDB(path, artista, portada) {
-      if (!db) await abrirDB();
-      try {
-        const tx = db.transaction("metadatos", "readwrite");
-        const store = tx.objectStore("metadatos");
-        store.put({ path: path, artista: artista, portada: portada });
-      } catch (e) {
-        console.log("Error al guardar metadatos en IndexedDB", e);
-      }
-    }
-
-    /* ==========================================
-       CONTROL GENERAL Y NAVEGACIÓN
-       ========================================== */
-    function cambiarPantalla(idPantalla) {
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      const pantallaObj = document.getElementById(idPantalla);
-      if (pantallaObj) pantallaObj.classList.add('active');
-    }
-
-    function volverAPlaylist() {
-      if (audioElement) {
-        audioElement.pause();
-      }
-      actualizarEstadoPlayPause(false);
-      cambiarPantalla('screen-playlist');
-    }
-
-    function salirDeAplicacion() {
-      try {
-        if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.salir) {
-          window.AndroidBridge.salir();
-        } else if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.App) {
-          Capacitor.Plugins.App.exitApp();
-        } else if (navigator.app && navigator.app.exitApp) {
-          navigator.app.exitApp();
-        } else {
-          window.close();
-        }
-      } catch (e) {
-        console.log("Error al salir de la aplicación:", e);
-      }
-    }
-
-    function obtenerUrlFormateada(url) {
-      if (!url) return '';
-      if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) {
-        return url;
-      }
-      if (typeof Capacitor !== 'undefined' && typeof Capacitor.convertFileSrc === 'function') {
-        return Capacitor.convertFileSrc(url);
-      }
-      if (!url.startsWith('file://') && !url.startsWith('content://') && !url.startsWith('capacitor://')) {
-        return 'file://' + url;
-      }
-      return url;
-    }
-
-    /* ==========================================
-       ORDENACIÓN Y RENDERIZADO DE PLAYLIST
-       ========================================== */
-    function ordenarAZ() {
-      todasLasCanciones.sort((a, b) => {
-        const nombreA = (a.titulo || a.nombre || a.title || '').toLowerCase();
-        const nombreB = (b.titulo || b.nombre || b.title || '').toLowerCase();
-        return nombreA.localeCompare(nombreB);
-      });
-      reiniciarColaAleatoria();
-      renderizarPlaylist();
-    }
-
-    function ordenarPorAutor() {
-      todasLasCanciones.sort((a, b) => {
-        const autorA = (a.artista || a.artist || 'Artista desconocido').toLowerCase();
-        const autorB = (b.artista || b.artist || 'Artista desconocido').toLowerCase();
-        return autorA.localeCompare(autorB);
-      });
-      reiniciarColaAleatoria();
-      renderizarPlaylist();
-    }
-
-    function ordenarRandom() {
-      todasLasCanciones = meclarArray(todasLasCanciones);
-      reiniciarColaAleatoria();
-      renderizarPlaylist();
-    }
-
-    async function renderizarPlaylist() {
-      const contenedor = document.getElementById('playlist-list');
-      if (!contenedor) return;
-      contenedor.innerHTML = '';
-
-      for (let index = 0; index < todasLasCanciones.length; index++) {
-        const cancion = todasLasCanciones[index];
-        const item = document.createElement('div');
-        item.className = 'playlist-item';
-
-        const nombre = cancion.titulo || cancion.nombre || cancion.title || 'Canción desconocida';
-        const rawUrl = cancion.archivo || cancion.path || cancion.url || '';
-        
-        // Consulta rápida a IndexedDB
-        const cached = await obtenerMetaIndexedDB(rawUrl);
-        if (cached) {
-          if (cached.artista) cancion.artista = cached.artista;
-          if (cached.portada) cancion.portada = cached.portada;
-        }
-
-        const artista = cancion.artista || cancion.artist || 'Artista desconocido';
-
-        item.innerHTML = `
-          <div class="playlist-thumb" id="thumb-${index}">🎵</div>
-          <div class="playlist-info">
-            <div class="playlist-title">${nombre}</div>
-            <div class="playlist-artist" id="artist-playlist-${index}">${artista}</div>
-          </div>
-        `;
-
-        item.onclick = () => {
-          indiceCancionActualAZ = index;
-          playSong(cancion);
-          cambiarPantalla('screen-player');
-        };
-
-        contenedor.appendChild(item);
-
-        if (cancion.portada) {
-          asignarImagenThumb(index, cancion.portada);
-        } else {
-          extraerMetadatosParaPlaylist(cancion, index, rawUrl);
-        }
-      }
-    }
-
-    function asignarImagenThumb(index, fuenteImg) {
-      const thumbElem = document.getElementById(`thumb-${index}`);
-      if (thumbElem) {
-        let srcImg = fuenteImg;
-        if (srcImg.length > 100 && !srcImg.startsWith('data:') && !srcImg.startsWith('http') && !srcImg.startsWith('file:')) {
-          srcImg = 'data:image/jpeg;base64,' + srcImg;
-        }
-        thumbElem.style.backgroundImage = `url('${srcImg}')`;
-        thumbElem.innerText = '';
-      }
-    }
-
-    function extraerMetadatosParaPlaylist(songObj, index, rawUrl) {
-      if (typeof jsmediatags === 'undefined' || !rawUrl) return;
-
-      let formattedUrl = obtenerUrlFormateada(rawUrl);
-
-      jsmediatags.read(formattedUrl, {
-        onSuccess: function(tag) {
-          const tags = tag.tags || {};
-          let artExtraido = tags.artist || '';
-          let coverExtraida = '';
-
-          if (artExtraido) {
-            songObj.artista = artExtraido;
-            const artistElem = document.getElementById(`artist-playlist-${index}`);
-            if (artistElem) artistElem.innerText = artExtraido;
-          }
-
-          const picture = tags.picture;
-          if (picture) {
-            let base64String = "";
-            for (let i = 0; i < picture.data.length; i++) {
-              base64String += String.fromCharCode(picture.data[i]);
-            }
-            coverExtraida = "data:" + picture.format + ";base64," + window.btoa(base64String);
-            songObj.portada = coverExtraida;
-            asignarImagenThumb(index, coverExtraida);
-          }
-
-          // Guardar metadatos en IndexedDB
-          guardarMetaIndexedDB(rawUrl, artExtraido, coverExtraida);
-        },
-        onError: function() {
-          if (formattedUrl !== rawUrl) {
-            jsmediatags.read(rawUrl, {
-              onSuccess: function(tag) {
-                const tags = tag.tags || {};
-                let artExtraido = tags.artist || '';
-                let coverExtraida = '';
-
-                if (artExtraido) {
-                  songObj.artista = artExtraido;
-                  const artistElem = document.getElementById(`artist-playlist-${index}`);
-                  if (artistElem) artistElem.innerText = artExtraido;
-                }
-
-                const picture = tags.picture;
-                if (picture) {
-                  let base64String = "";
-                  for (let i = 0; i < picture.data.length; i++) {
-                    base64String += String.fromCharCode(picture.data[i]);
-                  }
-                  coverExtraida = "data:" + picture.format + ";base64," + window.btoa(base64String);
-                  songObj.portada = coverExtraida;
-                  asignarImagenThumb(index, coverExtraida);
-                }
-
-                guardarMetaIndexedDB(rawUrl, artExtraido, coverExtraida);
-              }
-            });
-          }
-        }
-      });
-    }
-
-    /* ==========================================
-       ESCANEO DIRECTO DE ARCHIVOS
-       ========================================== */
-    async function cargarMusicaInicial() {
-      await abrirDB();
-
-      // Solicitar permisos en Capacitor si existen
-      if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.Filesystem) {
-        try {
-          if (Capacitor.Plugins.Filesystem.requestPermissions) {
-            await Capacitor.Plugins.Filesystem.requestPermissions();
-          }
-        } catch (err) {
-          console.log("Error solicitando permisos:", err);
-        }
-      }
-
-      if (typeof window.AndroidBridge !== 'undefined' && typeof window.AndroidBridge.cargarMusica === 'function') {
-        window.AndroidBridge.cargarMusica();
-      }
-      
-      if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.Filesystem) {
-        try {
-          const result = await Capacitor.Plugins.Filesystem.readdir({
-            path: 'MiMusica',
-            directory: 'EXTERNAL_STORAGE'
-          });
-
-          if (result && result.files && result.files.length > 0) {
-            const archivosEncontrados = [];
-            result.files.forEach(file => {
-              const nombreArchivo = typeof file === 'string' ? file : file.name;
-              if (nombreArchivo.toLowerCase().endsWith('.mp3') || nombreArchivo.toLowerCase().endsWith('.m4a') || nombreArchivo.toLowerCase().endsWith('.wav')) {
-                const rutaCompleta = '/storage/emulated/0/MiMusica/' + nombreArchivo;
-                archivosEncontrados.push({
-                  nombre: nombreArchivo.replace(/\.[^/.]+$/, ""),
-                  archivo: rutaCompleta,
-                  album: 'MiMusica'
-                });
-              }
-            });
-
-            if (archivosEncontrados.length > 0) {
-              todasLasCanciones = archivosEncontrados;
-              ordenarAZ();
-              return;
-            }
-          }
-        } catch (e) {
-          console.log("Error al leer directorio directamente:", e);
-        }
-      }
-    }
-
-    window.recibirBibliotecaNativa = async function(bibliotecaRecibida, coversRecibidas) {
-      const cancionesExtraidas = [];
-      const mapaCovers = coversRecibidas || {};
-      
-      if (Array.isArray(bibliotecaRecibida)) {
-        bibliotecaRecibida.forEach(item => {
-          if (typeof item === 'object' && item !== null) {
-            cancionesExtraidas.push(item);
-          } else {
-            cancionesExtraidas.push({
-              nombre: String(item),
-              archivo: String(item).startsWith('/') ? String(item) : '/storage/emulated/0/MiMusica/' + String(item),
-              album: 'MiMusica'
-            });
-          }
-        });
-      } else if (typeof bibliotecaRecibida === 'object' && bibliotecaRecibida !== null) {
-        Object.keys(bibliotecaRecibida).forEach(album => {
-          const lista = bibliotecaRecibida[album];
-          if (Array.isArray(lista)) {
-            lista.forEach(item => {
-              if (typeof item === 'object' && item !== null) {
-                if (!item.album) item
