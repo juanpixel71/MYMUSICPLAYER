@@ -52,6 +52,32 @@
       text-transform: uppercase;
       box-shadow: 0 2px 5px rgba(0,0,0,0.3);
       flex-shrink: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .header-separator {
+      color: #FFFFFF;
+      font-weight: bold;
+      font-size: 1.25rem;
+    }
+
+    .header-btn {
+      background-color: transparent;
+      color: #FFFFFF;
+      font-weight: bold;
+      font-size: 1.05rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    .header-btn:active {
+      opacity: 0.7;
     }
 
     /* ==========================================
@@ -298,8 +324,12 @@
       background-color: #FF8C00 !important;
     }
 
-    .btn-square-main.btn-shuffle-orange {
+    .btn-square-main.btn-shuffle-active {
       background-color: #FF8C00 !important;
+    }
+
+    .btn-square-main.btn-shuffle-inactive {
+      background-color: #9D9D9C !important;
     }
 
     .shuffle-icon {
@@ -315,10 +345,18 @@
 
     <!-- PANTALLA 1: PLAYLIST -->
     <div id="screen-playlist" class="screen active">
-      <div class="header">PLAYLIST</div>
+      <div class="header">
+        <span class="header-separator">|</span>
+        <button class="header-btn" onclick="ordenarAZ()">A-Z</button>
+        <span class="header-separator">|</span>
+        <button class="header-btn" onclick="ordenarPorAutor()">AUTOR</button>
+        <span class="header-separator">|</span>
+        <button class="header-btn" onclick="ordenarRandom()">RANDOM</button>
+        <span class="header-separator">|</span>
+      </div>
       <div class="view-content">
         <div class="playlist-container" id="playlist-list">
-          <!-- Las canciones cargadas A-Z se renderizan aquí -->
+          <!-- Las canciones cargadas se renderizan aquí -->
         </div>
         <button class="btn-nav-back" onclick="salirDeAplicacion()">&lt; SALIR DE LA APLICACIÓN</button>
       </div>
@@ -344,7 +382,7 @@
           <div class="media-controls-square">
             <button class="btn-square" onclick="prevSongAZ()">⏮</button>
             <button class="btn-square btn-square-main is-playing" id="btn-toggle-play" onclick="togglePlayPause()">❚❚</button>
-            <button class="btn-square btn-square-main btn-shuffle-orange" id="btn-shuffle" onclick="siguienteCancionAleatoria()">
+            <button class="btn-square btn-square-main btn-shuffle-inactive" id="btn-shuffle" onclick="toggleModoAleatorio()">
               <svg class="shuffle-icon" viewBox="0 0 24 24">
                 <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.45 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
               </svg>
@@ -366,11 +404,12 @@
     let todasLasCanciones = [];
     let colaAleatoria = [];
     let indiceCancionActualAZ = -1;
-    let modoAleatorioActivo = true; // Por defecto el shuffle naranja está activo
+    let modoAleatorioActivo = false; // Comienza apagado (gris) por defecto
 
     const audioElement = document.getElementById('audio-element');
     const seekBar = document.getElementById('seek-bar');
     const btnPlayPause = document.getElementById('btn-toggle-play');
+    const btnShuffle = document.getElementById('btn-shuffle');
 
     /* ==========================================
        GESTIÓN DE BASE DE DATOS INDEXEDDB (SIN LÍMITE DE TAMAÑO)
@@ -462,19 +501,38 @@
     }
 
     /* ==========================================
-       RENDERIZADO INSTANTÁNEO A-Z
+       ORDENACIÓN Y RENDERIZADO DE PLAYLIST
        ========================================== */
-    async function renderizarPlaylist() {
-      const contenedor = document.getElementById('playlist-list');
-      if (!contenedor) return;
-      contenedor.innerHTML = '';
-
-      // Ordenar alfabéticamente A-Z
+    function ordenarAZ() {
       todasLasCanciones.sort((a, b) => {
         const nombreA = (a.titulo || a.nombre || a.title || '').toLowerCase();
         const nombreB = (b.titulo || b.nombre || b.title || '').toLowerCase();
         return nombreA.localeCompare(nombreB);
       });
+      reiniciarColaAleatoria();
+      renderizarPlaylist();
+    }
+
+    function ordenarPorAutor() {
+      todasLasCanciones.sort((a, b) => {
+        const autorA = (a.artista || a.artist || 'Artista desconocido').toLowerCase();
+        const autorB = (b.artista || b.artist || 'Artista desconocido').toLowerCase();
+        return autorA.localeCompare(autorB);
+      });
+      reiniciarColaAleatoria();
+      renderizarPlaylist();
+    }
+
+    function ordenarRandom() {
+      todasLasCanciones = meclarArray(todasLasCanciones);
+      reiniciarColaAleatoria();
+      renderizarPlaylist();
+    }
+
+    async function renderizarPlaylist() {
+      const contenedor = document.getElementById('playlist-list');
+      if (!contenedor) return;
+      contenedor.innerHTML = '';
 
       for (let index = 0; index < todasLasCanciones.length; index++) {
         const cancion = todasLasCanciones[index];
@@ -616,330 +674,3 @@
               const nombreArchivo = typeof file === 'string' ? file : file.name;
               if (nombreArchivo.toLowerCase().endsWith('.mp3') || nombreArchivo.toLowerCase().endsWith('.m4a') || nombreArchivo.toLowerCase().endsWith('.wav')) {
                 const rutaCompleta = '/storage/emulated/0/MiMusica/' + nombreArchivo;
-                archivosEncontrados.push({
-                  nombre: nombreArchivo.replace(/\.[^/.]+$/, ""),
-                  archivo: rutaCompleta,
-                  album: 'MiMusica'
-                });
-              }
-            });
-
-            if (archivosEncontrados.length > 0) {
-              todasLasCanciones = archivosEncontrados;
-              reiniciarColaAleatoria();
-              await renderizarPlaylist();
-              return;
-            }
-          }
-        } catch (e) {
-          console.log("Error al leer directorio directamente:", e);
-        }
-      }
-    }
-
-    window.recibirBibliotecaNativa = async function(bibliotecaRecibida, coversRecibidas) {
-      const cancionesExtraidas = [];
-      const mapaCovers = coversRecibidas || {};
-      
-      if (Array.isArray(bibliotecaRecibida)) {
-        bibliotecaRecibida.forEach(item => {
-          if (typeof item === 'object' && item !== null) {
-            cancionesExtraidas.push(item);
-          } else {
-            cancionesExtraidas.push({
-              nombre: String(item),
-              archivo: String(item).startsWith('/') ? String(item) : '/storage/emulated/0/MiMusica/' + String(item),
-              album: 'MiMusica'
-            });
-          }
-        });
-      } else if (typeof bibliotecaRecibida === 'object' && bibliotecaRecibida !== null) {
-        Object.keys(bibliotecaRecibida).forEach(album => {
-          const lista = bibliotecaRecibida[album];
-          if (Array.isArray(lista)) {
-            lista.forEach(item => {
-              if (typeof item === 'object' && item !== null) {
-                if (!item.album) item.album = album;
-                cancionesExtraidas.push(item);
-              } else {
-                const claveAlbum = album.toLowerCase();
-                cancionesExtraidas.push({
-                  nombre: String(item),
-                  archivo: String(item).startsWith('/') ? String(item) : '/storage/emulated/0/MiMusica/' + String(item),
-                  album: album,
-                  portada: mapaCovers[claveAlbum] || ''
-                });
-              }
-            });
-          }
-        });
-      }
-
-      if (cancionesExtraidas.length > 0) {
-        todasLasCanciones = cancionesExtraidas;
-        reiniciarColaAleatoria();
-        await renderizarPlaylist();
-      }
-    };
-
-    /* ==========================================
-       NAVEGACIÓN A-Z Y SHUFFLE
-       ========================================== */
-    function meclarArray(array) {
-      const copia = [...array];
-      for (let i = copia.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [copia[i], copia[j]] = [copia[j], copia[i]];
-      }
-      return copia;
-    }
-
-    function reiniciarColaAleatoria() {
-      if (todasLasCanciones.length === 0) return;
-      colaAleatoria = meclarArray(todasLasCanciones);
-    }
-
-    function siguienteCancionAleatoria() {
-      if (todasLasCanciones.length === 0) return;
-
-      if (colaAleatoria.length === 0) {
-        reiniciarColaAleatoria();
-      }
-
-      const proximaCancion = colaAleatoria.shift();
-      indiceCancionActualAZ = todasLasCanciones.indexOf(proximaCancion);
-
-      playSong(proximaCancion);
-    }
-
-    function prevSongAZ() {
-      if (todasLasCanciones.length === 0) return;
-      if (indiceCancionActualAZ > 0) {
-        indiceCancionActualAZ--;
-      } else {
-        indiceCancionActualAZ = todasLasCanciones.length - 1;
-      }
-      playSong(todasLasCanciones[indiceCancionActualAZ]);
-    }
-
-    function nextSongAZ() {
-      if (todasLasCanciones.length === 0) return;
-      if (indiceCancionActualAZ < todasLasCanciones.length - 1) {
-        indiceCancionActualAZ++;
-      } else {
-        indiceCancionActualAZ = 0;
-      }
-      playSong(todasLasCanciones[indiceCancionActualAZ]);
-    }
-
-    /* ==========================================
-       CONTROLES DE REPRODUCCIÓN (PLAY / PAUSE)
-       ========================================== */
-    function togglePlayPause() {
-      if (!audioElement) return;
-      if (audioElement.paused) {
-        audioElement.play().then(() => {
-          actualizarEstadoPlayPause(true);
-        }).catch(err => console.log(err));
-      } else {
-        audioElement.pause();
-        actualizarEstadoPlayPause(false);
-      }
-    }
-
-    function actualizarEstadoPlayPause(estaSonando) {
-      if (btnPlayPause) {
-        if (estaSonando) {
-          btnPlayPause.innerText = '❚❚';
-          btnPlayPause.classList.remove('is-paused');
-          btnPlayPause.classList.add('is-playing');
-        } else {
-          btnPlayPause.innerText = '▶';
-          btnPlayPause.classList.remove('is-playing');
-          btnPlayPause.classList.add('is-paused');
-        }
-      }
-    }
-
-    /* ==========================================
-       REPRODUCCIÓN Y METADATOS ID3
-       ========================================== */
-    function cargarMetadatosDesdeTag(urlAudio, artistaInicial, songObj) {
-      const playerCover = document.getElementById('player-cover');
-      const playerCoverIcon = document.getElementById('player-cover-icon');
-      const artistElem = document.getElementById('player-artist-info');
-
-      if (typeof jsmediatags !== 'undefined' && urlAudio) {
-        jsmediatags.read(urlAudio, {
-          onSuccess: function(tag) {
-            const tags = tag.tags || {};
-
-            if (tags.artist) {
-              if (artistElem) artistElem.innerText = tags.artist;
-              if (songObj) songObj.artista = tags.artist;
-            } else if (artistElem && !artistElem.innerText) {
-              artistElem.innerText = artistaInicial || 'Artista desconocido';
-            }
-
-            const picture = tags.picture;
-            if (picture) {
-              let base64String = "";
-              for (let i = 0; i < picture.data.length; i++) {
-                base64String += String.fromCharCode(picture.data[i]);
-              }
-              const base64 = "data:" + picture.format + ";base64," + window.btoa(base64String);
-              if (playerCover && playerCoverIcon) {
-                playerCover.style.backgroundImage = `url('${base64}')`;
-                playerCoverIcon.style.display = 'none';
-              }
-            } else {
-              mostrarCoverPorDefecto();
-            }
-          },
-          onError: function(error) {
-            if (artistElem && !artistElem.innerText) artistElem.innerText = artistaInicial || 'Artista desconocido';
-            mostrarCoverPorDefecto();
-          }
-        });
-      } else {
-        if (artistElem && !artistElem.innerText) artistElem.innerText = artistaInicial || 'Artista desconocido';
-        mostrarCoverPorDefecto();
-      }
-    }
-
-    function mostrarCoverPorDefecto() {
-      const playerCover = document.getElementById('player-cover');
-      const playerCoverIcon = document.getElementById('player-cover-icon');
-      if (playerCover && playerCoverIcon) {
-        playerCover.style.backgroundImage = 'none';
-        playerCoverIcon.style.display = 'block';
-      }
-    }
-
-    function playSong(song) {
-      if (!song) return;
-
-      let nombre = '';
-      let artista = '';
-      let url = '';
-      let fileName = '';
-      let portadaRaw = '';
-
-      if (typeof song === 'object' && song !== null) {
-        nombre = song.titulo || song.nombre || song.title || '';
-        artista = song.artista || song.artist || '';
-        url = song.archivo || song.path || song.url || '';
-        portadaRaw = song.portada || song.cover || song.art || song.imagen || song.caratula || song.albumArt || song.coverUri || '';
-
-        if (url) {
-          fileName = url.split('/').pop().split('\\').pop();
-          if (!nombre) {
-            nombre = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
-          }
-        }
-      } else {
-        const urlStr = String(song);
-        fileName = urlStr.split('/').pop().split('\\').pop();
-        nombre = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
-        url = urlStr;
-        artista = '';
-      }
-
-      if (!nombre) nombre = 'Canción desconocida';
-
-      let rawAudioUrl = url;
-      url = obtenerUrlFormateada(url);
-
-      const titleElem = document.getElementById('player-song-title');
-      const artistElem = document.getElementById('player-artist-info');
-
-      if (titleElem) titleElem.innerText = nombre;
-      
-      if (artistElem) {
-        artistElem.innerText = artista ? artista : '';
-      }
-
-      if (portadaRaw) {
-        const playerCover = document.getElementById('player-cover');
-        const playerCoverIcon = document.getElementById('player-cover-icon');
-        let srcImg = portadaRaw;
-        if (srcImg.length > 100 && !srcImg.startsWith('data:') && !srcImg.startsWith('http') && !srcImg.startsWith('file:')) {
-          srcImg = 'data:image/jpeg;base64,' + srcImg;
-        }
-        if (playerCover && playerCoverIcon) {
-          playerCover.style.backgroundImage = `url('${srcImg}')`;
-          playerCoverIcon.style.display = 'none';
-        }
-        if (!artista && artistElem) {
-          artistElem.innerText = 'Artista desconocido';
-        }
-      } else {
-        cargarMetadatosDesdeTag(url || rawAudioUrl, artista, typeof song === 'object' ? song : null);
-      }
-
-      if (audioElement) {
-        audioElement.pause();
-        audioElement.src = url;
-        audioElement.load();
-        
-        audioElement.play().then(() => {
-          actualizarEstadoPlayPause(true);
-        }).catch(error => {
-          console.log("Error al reproducir audio:", error);
-          actualizarEstadoPlayPause(false);
-        });
-      }
-    }
-
-    /* ==========================================
-       EVENTOS DE AUDIO Y BARRA DE PROGRESO
-       ========================================== */
-    if (audioElement) {
-      // CORRECCIÓN SHUFFLE AUTOMÁTICO AL TERMINAR CANCIÓN
-      audioElement.addEventListener('ended', () => {
-        if (modoAleatorioActivo) {
-          siguienteCancionAleatoria();
-        } else {
-          nextSongAZ();
-        }
-      });
-
-      audioElement.addEventListener('timeupdate', () => {
-        if (!isNaN(audioElement.duration) && seekBar) {
-          seekBar.max = Math.floor(audioElement.duration);
-          seekBar.value = Math.floor(audioElement.currentTime);
-          
-          const porcentaje = (audioElement.currentTime / audioElement.duration) * 100;
-          seekBar.style.background = `linear-gradient(to right, #FF8C00 0%, #FF8C00 ${porcentaje}%, #555555 ${porcentaje}%, #555555 100%)`;
-
-          const currTime = document.getElementById('current-time');
-          const totTime = document.getElementById('total-time');
-          if (currTime) currTime.innerText = formatTime(audioElement.currentTime);
-          if (totTime) totTime.innerText = formatTime(audioElement.duration);
-        }
-      });
-    }
-
-    if (seekBar) {
-      seekBar.addEventListener('input', () => { 
-        if (audioElement) {
-          audioElement.currentTime = seekBar.value;
-          const porcentaje = (seekBar.value / seekBar.max) * 100;
-          seekBar.style.background = `linear-gradient(to right, #FF8C00 0%, #FF8C00 ${porcentaje}%, #555555 ${porcentaje}%, #555555 100%)`;
-        }
-      });
-    }
-
-    function formatTime(seconds) {
-      if (isNaN(seconds)) return "0:00";
-      let min = Math.floor(seconds / 60);
-      let sec = Math.floor(seconds % 60);
-      return `${min}:${sec < 10 ? '0' : ''}${sec}`;
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      cargarMusicaInicial();
-    });
-  </script>
-</body>
-</html>
